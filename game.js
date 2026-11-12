@@ -591,6 +591,9 @@
     return best;
   }
 
+  // Where a hazard shows up on screen: a pukao at the edge it enters from, anything else at its own x.
+  const hx = (h) => (h.k == 'roll' ? (h.d > 0 ? 0 : W) : h.x);
+
   function addH(k, x, y) {
     const h = { k, x, y, w: k == 'erupt' ? 1200 : k == 'fire' ? 0 : 1000, s: null };
     if (k == 'fire') Object.assign(h, { vx: 0, vy: 0 });
@@ -612,7 +615,7 @@
       h.s = S.add.image(h.x, h.y, 'hz', ['roll', 'ice', 'fire'].indexOf(k)).setDepth(5).setVisible(k == 'fire');
     }
     G.H.push(h);
-    if (k != 'fire') fx('hzw', k == 'roll' ? (h.d > 0 ? 0 : W) : h.x, h.y, k);
+    if (k != 'fire') fx('hzw', hx(h), h.y, k);
     return h;
   }
 
@@ -698,7 +701,7 @@
       if (h.w > 0) {
         h.w -= dt;
         if (h.w > 0) continue;
-        fx('hz', h.k == 'roll' ? (h.d > 0 ? 0 : W) : h.x, h.y, h.k);
+        fx('hz', hx(h), h.y, h.k);
         if (h.k == 'erupt') erupt(h);
         else h.s.setVisible(true);
       }
@@ -716,7 +719,7 @@
       if (h.w <= 0) return;
       gfx.fillStyle(0xff5a4d, on ? 0.9 : 0.35);
       if (h.k == 'roll') {
-        const x = h.d > 0 ? 0 : W;
+        const x = hx(h);
         gfx.fillRect(Math.min(x, x + h.d * 20), h.y - 2, 20, 4).fillTriangle(x + h.d * 20, h.y - 12, x + h.d * 20, h.y + 12, x + h.d * 40, h.y);
       } else if (h.k == 'ice') {
         gfx.fillTriangle(h.x - 12, HB + 4, h.x + 12, HB + 4, h.x, HB + 22);
@@ -1105,7 +1108,7 @@
     U.menu = ['JUGAR', 'MODO', 'PELIGROS', 'RANKING', 'CÓMO JUGAR'].map((s, i) => L(c, 400, 292 + i * 40, s, 3));
     U.mc = S.add.image(0, 0, 'key', 6).setScale(2);
     c.add(U.mc);
-    U.best = L(c, 400, 510, '', 2, 0xffffff);
+    U.best = L(c, 400, 480, '', 2, 0xffffff);
     L(c, 400, 572, 'PALANCA: ELEGIR Y CAMBIAR. BOTÓN 1: CONFIRMAR', 2, 0x8a84b8);
 
     c = mkUI('how', 0.93);
