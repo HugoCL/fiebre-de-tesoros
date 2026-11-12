@@ -1584,23 +1584,41 @@
     if (FX[name]) FX[name](scene, x, y, a);
   }
 
-  // One char per eighth note: base-36 digit minus 6 semitones, '.' is a rest. Each song is [lead, bass].
-  // Title: Am F C G Am F E E. Play: Am Am Dm Dm E E Am E, then F G Am Am F G E E.
-  const SONG = {
-    title: [
+  // One char per eighth note: base-36 digit minus 6 semitones, '.' is a rest.
+  // Each song is [lead, bass, seconds per eighth, lead wave, lead volume, echo volume, drum bar].
+  // The drum bar has one digit per eighth: 1 hat, 2 kick, 4 snare, summed.
+  const SONG = [
+    // Title: Am F C G Am F E E.
+    [
       '69did9d.' + '269e969.' + '9dglgd9.' + '48bgb8b.' + 'idi.d96.' + 'e9e.962.' + '158d85d.' + 'dhd.851.',
       '6...6.d.' + '2...2.9.' + '9...9.g.' + '4...4.b.' + '6...6.d.' + '2...2.9.' + '1...1.8.' + '1.1.1.8.',
+      0.26, 2, 22, 0, '00000000',
     ],
-    play: [
+    // Templo: Am Am Dm Dm E E Am E, then F G Am Am F G E E.
+    [
       '69d969d.' + 'gd9di...' + 'beiebei.' + 'iebed...' + 'dhkhdhk.' + 'nkhkl.k.' + 'i.d.9.6.' + '8.5.1...' +
         '69e9i.e.' + '8bgbk.g.' + '9didl.i.' + 'idi.d.9.' + 'e.i.l.i.' + 'g.k.n.k.' + 'p.n.k.h.' + 'd.hkd.8.',
       '6.d.6.dd' + '6.d.6.dd' + 'b.i.b.ii' + 'b.i.b.ii' + 'd.k.d.kh' + 'd.k.d.kh' + '6.d.6.dd' + 'd.k.d.h.' +
         '2.9.2.99' + '4.b.4.bb' + '6.d.6.dd' + '6.d.6.dd' + '2.9.2.99' + '4.b.4.bb' + '1.8.1.88' + '1.8.1.5.',
+      0.19, 0, 9, 0, '21016101',
     ],
-  };
-  const TEMPO = { title: 0.26, play: 0.19, rush: 0.145 };
-  // Each map plays the match song in its own key.
-  const KEYS = [0, 3, -2];
+    // Caverna: Gm Gm Eb Eb Cm Cm D D, then Cm Gm Ab D Cm Gm Eb D. Slow and sparse, so the echo fills the gaps.
+    [
+      'b..g.j..' + 'j.i.g.b.' + 'c..g.j..' + 'j.l.j.g.' + '9..c.g..' + 'g.c.9...' + 'b..f.i..' + 'l.i.f.b.' +
+        'l.l.jlo.' + 'n.n.jgc.' + 'c.hlo.l.' + 'n.l.i.b.' + 'l.l.jlo.' + 'n.l.n.j.' + 'o.n.j.b.' + 'f.i.f.b.',
+      '4..4..b.' + '4..4..b.' + '0..0..7.' + '0..0..7.' + '9..9..4.' + '9..9..4.' + 'b..b..6.' + 'b..b..3.' +
+        '9..9..4.' + '4..4..7.' + '5..5..c.' + 'b..b..6.' + '9..9..4.' + '4..4..b.' + '0..0..7.' + 'b..b..3.',
+      0.21, 2, 20, 7, '20120140',
+    ],
+    // Volcán: F# F# G F# F# F# Em F#, then Bm A G F# twice. Fast, with the kick on every beat.
+    [
+      '343.743.' + '347a.743' + '48b.848.' + 'a87a743.' + '343.743.' + '7ad.fda.' + 'd84.841.' + '3.7af.a.' +
+        'f.fdb.8.' + 'd.dba.6.' + 'b.ba8.4.' + 'a.743.a.' + 'fkn.nmk.' + 'dim.mki.' + 'bgk.kig.' + 'mjgfa74.',
+      '3.3f3.3f' + '3.3f3.3f' + '4.4g4.4g' + '3.3f3.3f' + '3.3f3.3f' + '3.3f3.3f' + '1.1d1.1d' + '3.3f3.3f' +
+        '8.8k8.8k' + '6.6i6.6i' + '4.4g4.4g' + '3.3f3.3f' + '8.8k8.8k' + '6.6i6.6i' + '4.4g4.4g' + '3.3f3faf',
+      0.17, 1, 8, 0, '21612161',
+    ],
+  ];
 
   function music(scene, mode) {
     if (mode === mMode) return;
@@ -1612,29 +1630,27 @@
       delay: 60,
       loop: true,
       callback: () => {
-        const d = TEMPO[mMode];
-        if (!d || AC.state !== 'running') {
+        if (mMode === 'off' || AC.state !== 'running') {
           mNext = 0;
           return;
         }
         const calm = mMode === 'title';
-        const [lead, bass] = SONG[calm ? mMode : 'play'];
-        const key = calm ? 0 : KEYS[scene.G.lm];
+        const [lead, bass, t, w, v, e, dr] = SONG[calm ? 0 : scene.G.lm + 1];
+        const d = mMode === 'rush' ? t * 0.763 : t;
         if (mNext < AC.currentTime) mNext = AC.currentTime + 0.05;
         while (mNext < AC.currentTime + 0.2) {
-          const i = mStep++ % lead.length;
+          const n = lead.length, i = mStep++ % n, k = dr[i % 8];
           const note = (ch, base, w, vol, len) => {
-            const f = base * 2 ** ((parseInt(ch, 36) - 6 + key) / 12);
+            const f = base * 2 ** ((parseInt(ch, 36) - 6) / 12);
             if (ch !== '.') tone(w, f, f, d * len * 1000, vol, mNext, MG);
           };
-          note(lead[i], 440, calm ? 2 : 0, calm ? 22 : 9, calm ? 1.6 : 0.9);
+          note(lead[i], 440, w, v, calm ? 1.6 : 0.9);
           note(bass[i], 110, 2, 30, calm ? 3 : 1.6);
-          if (!calm) {
-            if (i % 2) tone(4, 7000, 0, 40, 9, mNext, MG);
-            if (i % 4 === 0) tone(3, 130, 45, 110, 45, mNext, MG);
-            if (i % 8 === 4) tone(4, 2200, 0, 90, 16, mNext, MG);
-            if (mMode === 'rush') note(lead[i], 880, 0, 4, 0.5);
-          }
+          if (k & 1) tone(4, 7000, 0, 40, 9, mNext, MG);
+          if (k & 2) tone(3, 130, 45, 110, 45, mNext, MG);
+          if (k & 4) tone(4, 2200, 0, 90, 16, mNext, MG);
+          if (e) note(lead[(i + n - 3) % n], 440, w, e, 0.9);
+          if (mMode === 'rush') note(lead[i], 880, 0, 4, 0.5);
           mNext += d;
         }
       },
