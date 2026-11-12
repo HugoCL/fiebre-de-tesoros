@@ -11,7 +11,7 @@
   // surface cells where players, keys and powerup boxes appear, and tc the light sources in pixels.
   const MAPS = [
     {
-      n: 'TEMPLO', th: 0,
+      n: 'TEMPLO', th: 0, hz: { n: 'DARDOS', d: 'CRUZAN LA SALA Y ATURDEN' },
       L: [
         '.........................',
         '.........................',
@@ -37,7 +37,7 @@
       tc: [[400, 276], [176, 424], [624, 424]],
     },
     {
-      n: 'CAVERNA', th: 1,
+      n: 'CAVERNA', th: 1, hz: { n: 'ESTALACTITAS', d: 'CAEN DEL TECHO Y ATURDEN' },
       L: [
         '.........................',
         '.........................',
@@ -63,7 +63,7 @@
       tc: [[400, 150], [288, 330], [512, 330]],
     },
     {
-      n: 'VOLCÁN', th: 2,
+      n: 'VOLCÁN', th: 2, hz: { n: 'ERUPCIONES', d: 'EL SUELO ESTALLA Y LLUEVE FUEGO' },
       L: [
         '.........................',
         '.........................',
@@ -89,7 +89,12 @@
       tc: [[400, 430], [112, 250], [688, 250]],
     },
   ];
-  const SK = 'fiebre-de-tesoros.scores.v1';
+  // Hazard frequency: label and multiplier on the spawn interval (0 is off).
+  const DF = [['APAGADOS', 0], ['POCOS', 1.6], ['NORMALES', 1], ['MUCHOS', 0.55]];
+  // One hazard per map: kind and base ms between spawns. Tune the rhythm here.
+  const HZ = [['dart', 5000], ['rock', 4500], ['erupt', 6000]];
+  // v2 holds one top 8 per DF row. v1 is only read, once, and its scores go to APAGADOS.
+  const SK = 'fiebre-de-tesoros.scores.v2', SK1 = 'fiebre-de-tesoros.scores.v1';
   const ABC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
   // DO NOT replace existing keys: they match the physical arcade cabinet wiring.
@@ -120,7 +125,11 @@
   const KA = {};
   for (const [a, ks] of Object.entries(CABINET_KEYS)) for (const k of ks) KA[k.toLowerCase()] = a;
 
-  const G = { ph: '', t: 0, wv: 1, wd: 0, mi: 0, lm: -1, P: [], K: [], C: [], B: [], hs: [], win: -1 };
+  const G = { ph: '', t: 0, wv: 1, wd: 0, mi: 0, lm: -1, P: [], K: [], C: [], B: [], lb: [[], [], [], []], rl: 0, win: -1, df: 2,
+    // The ranking of the level selected on the title. Ranking screens look at lb[rl] instead.
+    get hs() { return G.lb[G.df]; },
+    set hs(v) { G.lb[G.df] = v; },
+    H: [], ht: 6000, sp: (k, x, y) => addH(k, x, y) };
   const held = {}, pressed = {};
   const UI = {}, U = {}, hud = { sc: [], sk: [], ki: [], pi: [], pn: [], ch: [], st: [] };
   const nm = { l: [], i: 0 };
@@ -314,11 +323,7 @@
           k.s.body.setVelocity((Math.random() * 2 - 1) * 200, -420);
         });
         const b = r.s.body;
-        if ((b.blocked.down || b.touching.down) && r.inv <= 0) {
-          r.stun = 700;
-          r.inv = 1200;
-          if (r.k) drop(r);
-        }
+        if (b.blocked.down || b.touching.down) hurt(r, 0, 0);
         fx('quake', p.s.x, p.s.y, p.i);
       },
     },
@@ -374,12 +379,13 @@
 
   function reset() {
     const { PS } = MAPS[G.lm];
-    Object.assign(G, { t: 99000, rush: 0, bt: 4000, win: -1, wn: 99, wv: 1 });
+    Object.assign(G, { t: 99000, rush: 0, bt: 4000, win: -1, wn: 99, wv: 1, ht: 6000 });
+    G.H.splice(0).forEach((h) => h.s && h.s.destroy());
     G.B.splice(0).forEach((b) => b.s.destroy());
     G.K.splice(6).forEach((k) => k.s.destroy());
     deal();
     G.P.forEach((p, i) => {
-      Object.assign(p, { sc: 0, sk: 0, k: null, pw: null, slow: 0, stun: 0, inv: 0, np: 0, fast: 0, dz: 0, luck: 0, rf: 0, cy: 0, jb: 0, cj: 0, vy: 0 });
+      Object.assign(p, { sc: 0, sk: 0, k: null, pw: null, slow: 0, stun: 0, inv: 0, np: 0, fast: 0, dz: 0, luck: 0, rf: 0, cy: 0, jb: 0, cj: 0, vy: 0, kx: 0 });
       const x = PS[i][0] * T + T / 2, y = HB + PS[i][1] * T;
       p.s.setPosition(x, y).setFlipX(i == 1).setAlpha(1);
       p.s.body.reset(x, y);
@@ -387,13 +393,23 @@
     view();
   }
 
+  // The stun shared by a stomp, a quake and every hazard. kx is a sideways push that move() lets fade.
+  function hurt(p, kx, vy) {
+    if (p.inv > 0 || p.stun > 0) return false;
+    p.stun = 700;
+    p.inv = 1200;
+    if (p.k) drop(p);
+    p.kx = kx;
+    if (vy) p.s.body.setVelocityY(vy);
+    p.cj = 0;
+    return true;
+  }
+
   function stomp(a, v) {
     const A = a.s.body, V = v.s.body;
     if (a.stun > 0 || v.stun > 0 || v.inv > 0 || A.velocity.y <= 120) return;
     if (A.bottom < V.top || A.bottom > V.top + 20 || A.right < V.left + 4 || A.left > V.right - 4) return;
-    v.stun = 700;
-    v.inv = 1200;
-    if (v.k) drop(v);
+    hurt(v, 0, 0);
     A.velocity.y = -380;
     a.cj = 0;
     fx('stomp', v.s.x, v.s.y, v.s);
@@ -415,7 +431,8 @@
     const g = b.blocked.down || b.touching.down;
     p.cy = g ? PH.coy : p.cy - dt;
     p.jb = n.jp && !st ? PH.buf : p.jb - dt;
-    b.setVelocityX(x * PH.run * (p.slow > 0 ? 0.45 : 1) * (p.fast > 0 ? 1.5 : 1));
+    b.setVelocityX(x * PH.run * (p.slow > 0 ? 0.45 : 1) * (p.fast > 0 ? 1.5 : 1) + p.kx);
+    p.kx = p.kx > 0 ? Math.max(0, p.kx - dt * 0.8) : Math.min(0, p.kx + dt * 0.8);
     if (p.jb > 0 && p.cy > 0 && !st) {
       b.setVelocityY(-PH.jump * (p.slow > 0 ? 0.8 : 1));
       p.cy = p.jb = 0;
@@ -483,6 +500,7 @@
       const f = p.dz > 0 ? 8 : p.slow > 0 ? 0 : p.fast > 0 ? 5 : p.luck ? 6 : -1;
       hud.st[i].setVisible(f >= 0).setFrame(Math.max(f, 0)).setPosition(p.s.x, p.s.y - (p.k ? 74 : 56));
     });
+    hzView();
   }
 
   function tick(dt) {
@@ -495,6 +513,7 @@
       if (p.stun > 0) p.stun -= dt;
       else p.inv -= dt;
     });
+    hzTick(dt);
     G.bt -= dt;
     if (G.bt <= 0) {
       G.bt = 7000;
@@ -532,6 +551,176 @@
     }
   }
 
+  // ---- hazards ----------------------------------------------------------
+  // Plain data driven from tick(), so pause, end and the title freeze them. Each one warns (w ms) and then acts.
+  // dart: x, y, d (direction). rock: x, y, vy, fy (landing height). erupt: x, y (surface), x0, x1. fire: x, y, vx, vy.
+
+  const solid = (ch) => ch == '#' || ch == '=';
+  const rowY = (r) => HB + r * T;
+
+  // The first solid cell of a column at or below y: its surface height, or Infinity over a pit.
+  function floorAt(c, y) {
+    const L = MAPS[G.lm].L;
+    for (let r = 0; r < L.length; r++) if (solid(L[r][c]) && rowY(r) >= y) return rowY(r);
+    return Infinity;
+  }
+
+  // The three-tile stretch of ground or platform nearest to (x, y), as [centre column, surface y].
+  function spot(x, y) {
+    let best, bd = 1e9;
+    MAPS[G.lm].L.forEach((row, r) => {
+      for (let c = 1; c < 24; c++) {
+        const d = Math.abs(c * T + T / 2 - x) + 2 * Math.abs(rowY(r) - y);
+        if (solid(row[c]) && row[c - 1] == row[c] && row[c + 1] == row[c] && d < bd) [best, bd] = [[c, rowY(r)], d];
+      }
+    });
+    return best;
+  }
+
+  function addH(k, x, y) {
+    const h = { k, x, y, w: k == 'erupt' ? 1200 : k == 'fire' ? 0 : 1000, s: null };
+    if (k == 'fire') Object.assign(h, { vx: 0, vy: 0 });
+    if (k == 'dart') {
+      h.d = x < W / 2 ? 1 : -1;
+      h.x = h.d > 0 ? -16 : W + 16;
+    } else if (k == 'rock') {
+      h.x = Phaser.Math.Clamp(x, 16, W - 16);
+      h.y = HB + 14;
+      h.vy = 0;
+      h.fy = floorAt((h.x / T) | 0, 0);
+    } else if (k == 'erupt') {
+      const [c, sy] = spot(x, y);
+      Object.assign(h, { x: c * T + T / 2, y: sy, x0: (c - 1) * T, x1: (c + 2) * T });
+    }
+    if (k != 'erupt') {
+      h.s = S.add.image(h.x, h.y, 'hz', ['dart', 'rock', 'fire'].indexOf(k)).setDepth(5).setVisible(k == 'fire');
+      if (h.d < 0) h.s.setFlipX(true);
+    }
+    G.H.push(h);
+    if (k != 'fire') fx('hzw', k == 'dart' ? (h.d > 0 ? 0 : W) : h.x, h.y, k);
+    return h;
+  }
+
+  function aim() {
+    const k = HZ[G.lm][0], r = Math.random, p = G.P[(r() * 2) | 0], b = p.s.body;
+    const rows = MAPS[G.lm].L.map((row, i) => (row.includes('#') || row.includes('=') ? rowY(i) : 0)).filter((y) => y);
+    const ry = rows[(r() * rows.length) | 0], dart = k == 'dart';
+    if (r() < 0.6) addH(k, dart ? (r() < 0.5 ? 0 : W) : p.s.x, dart ? b.center.y : b.bottom);
+    else addH(k, dart ? (r() < 0.5 ? 0 : W) : 40 + r() * (W - 80), ry - (dart ? 17 : 0));
+  }
+
+  function hit(h, w, hh, kx) {
+    const p = G.P.find((p) => ov(p.s.body, h.x, h.y, w, hh) && hurt(p, kx, 0));
+    if (p) fx('hzhit', h.x, h.y, p.s);
+    return !!p;
+  }
+
+  // Did a body whose bottom went from pb to nb land on a surface? Returns the surface height.
+  function lands(x, pb, nb) {
+    const L = MAPS[G.lm].L, c = (x / T) | 0;
+    for (let r = Math.max(0, Math.floor((pb - HB) / T)); r <= Math.min(L.length - 1, Math.floor((nb - HB) / T)); r++) {
+      const ch = L[r][c], y = rowY(r);
+      if (nb >= y && (ch == '#' || (ch == '=' && pb <= y + 8))) return y;
+    }
+    return 0;
+  }
+
+  // Returns true when the hazard is done.
+  function stepH(h, dt) {
+    const s = dt / 1000;
+    if (h.k == 'dart') {
+      h.x += h.d * 520 * s;
+      return h.x < -24 || h.x > W + 24 || hit(h, 28, 10, h.d * 260);
+    }
+    if (h.k == 'rock') {
+      h.vy = Math.min(h.vy + PH.g * s, PH.fall);
+      h.y += h.vy * s;
+      if (h.y + 12 >= h.fy) return fx('hzend', h.x, h.fy, 'rock'), true;
+      return h.y > H || hit(h, 24, 24, 0);
+    }
+    const pb = h.y + 8;
+    h.vy += PH.g * s;
+    h.x += h.vx * s;
+    h.y += h.vy * s;
+    if (h.x < 0 || h.x >= W || h.y > H || hit(h, 20, 20, (h.vx < 0 ? -1 : 1) * 180)) return true;
+    const ly = h.vy > 0 && lands(h.x, pb, h.y + 8);
+    return ly ? (fx('hzend', h.x, ly, 'fire'), true) : false;
+  }
+
+  function erupt(h) {
+    G.P.forEach((p) => {
+      if (p.s.x >= h.x0 && p.s.x <= h.x1 && Math.abs(p.s.body.bottom - h.y) <= 6 && hurt(p, (p.s.x < h.x ? -1 : 1) * 320, -720)) fx('hzhit', p.s.x, p.s.y, p.s);
+    });
+    for (let i = 0; i < 3; i++) {
+      const f = addH('fire', h.x, h.y - 8);
+      f.vx = (Math.random() * 2 - 1) * 220;
+      f.vy = -480 - Math.random() * 140;
+    }
+  }
+
+  function hzTick(dt) {
+    const df = DF[G.df][1];
+    if (df) {
+      G.ht -= dt;
+      if (G.ht <= 0) {
+        G.ht = HZ[G.lm][1] * df * (0.75 + Math.random() * 0.5) * (G.rush ? 0.75 : 1);
+        aim();
+      }
+    }
+    for (let i = G.H.length; i--;) {
+      const h = G.H[i];
+      if (h.w > 0) {
+        h.w -= dt;
+        if (h.w > 0) continue;
+        fx('hz', h.k == 'dart' ? (h.d > 0 ? 0 : W) : h.x, h.y, h.k);
+        if (h.k == 'erupt') erupt(h);
+        else h.s.setVisible(true);
+      }
+      if (h.k == 'erupt' || stepH(h, dt)) {
+        G.H.splice(i, 1);
+        if (h.s) h.s.destroy();
+      } else h.s.setPosition(h.x, h.y);
+    }
+  }
+
+  // Placeholder warnings. The art pass replaces this.
+  function hzView() {
+    const on = ((S.time.now / 120) | 0) & 1;
+    G.H.forEach((h) => {
+      if (h.w <= 0) return;
+      gfx.fillStyle(0xff5a4d, on ? 0.9 : 0.35);
+      if (h.k == 'dart') {
+        const x = h.d > 0 ? 0 : W;
+        gfx.fillRect(Math.min(x, x + h.d * 20), h.y - 2, 20, 4).fillTriangle(x + h.d * 20, h.y - 12, x + h.d * 20, h.y + 12, x + h.d * 40, h.y);
+      } else if (h.k == 'rock') {
+        gfx.fillTriangle(h.x - 12, HB + 4, h.x + 12, HB + 4, h.x, HB + 22);
+      } else gfx.fillRect(h.x0, h.y - 5, h.x1 - h.x0, 5);
+    });
+  }
+
+  // Placeholder art for the hz sheet (dart, rock, fireball). The KIT replaces it.
+  function hzTmp() {
+    const t = S.textures.createCanvas('hz', 96, 32), c = t.getContext();
+    c.fillStyle = '#b9bccb';
+    c.fillRect(2, 13, 20, 6);
+    c.fillStyle = '#ffffff';
+    c.fillRect(22, 10, 8, 12);
+    c.fillStyle = '#7c8ca3';
+    c.beginPath();
+    c.arc(48, 16, 12, 0, 7);
+    c.fill();
+    c.fillStyle = '#ff9a3c';
+    c.beginPath();
+    c.arc(80, 16, 10, 0, 7);
+    c.fill();
+    c.fillStyle = '#ffd23f';
+    c.beginPath();
+    c.arc(80, 16, 5, 0, 7);
+    c.fill();
+    [0, 1, 2].forEach((i) => t.add(i, 0, i * 32, 0, 32, 32));
+    t.refresh();
+  }
+
   // ---- phases -----------------------------------------------------------
 
   const best = () => G.P[G.win < 0 ? 0 : G.win].sc;
@@ -549,18 +738,23 @@
 
   function menu() {
     U.menu.forEach((t, i) => t.setTint(i == cur ? 0xffd23f : 0x8a84b8));
-    set(U.menu[0], cur ? 'JUGAR: ' + MAPS[G.mi].n : 'JUGAR: < ' + MAPS[G.mi].n + ' >');
+    const pick = (i, s) => (cur == i ? '< ' + s + ' >' : s);
+    set(U.menu[0], 'JUGAR: ' + pick(0, MAPS[G.mi].n));
+    set(U.menu[1], 'PELIGROS: ' + pick(1, DF[G.df][0]));
+    const hz = MAPS[G.mi].hz;
+    set(U.hz, hz.n + ': ' + hz.d);
     U.mc.setPosition(356 - U.menu[cur].width / 2, 300 + cur * 48);
   }
 
   function rank() {
     U.rk.forEach((r, i) => {
-      const e = G.hs[i], c = [0xffd23f, 0xcfd6e6, 0xe0935a][i] || 0xffffff;
+      const e = G.lb[G.rl][i], c = [0xffd23f, 0xcfd6e6, 0xe0935a][i] || 0xffffff;
       r[0].setText(i + 1 + '.').setTint(c);
       r[1].setText(e ? e.n : '---').setTint(c);
       r[2].setText(e ? '' + e.s : '').setTint(c);
     });
-    const li = G.hs.indexOf(G.last);
+    set(U.rl, 'PELIGROS: < ' + DF[G.rl][0] + ' >');
+    const li = G.lb[G.rl].indexOf(G.last);
     U.rc.setVisible(li >= 0).setY(140 + li * 46);
   }
 
@@ -594,15 +788,19 @@
       },
       up(dt) {
         const n = nav();
-        if (n.y) { cur = (cur + n.y + 3) % 3; menu(); fx('move'); }
-        else if (n.x && !cur) {
+        if (n.y) { cur = (cur + n.y + 4) % 4; menu(); fx('move'); }
+        else if (n.x && cur == 1) {
+          G.df = (G.df + n.x + DF.length) % DF.length;
+          menu();
+          fx('move');
+        } else if (n.x && !cur) {
           G.mi = (G.mi + n.x + MAPS.length) % MAPS.length;
           lvl();
           reset();
           menu();
           fx('move');
         }
-        if (ok()) { fx('ok'); return go(['ready', 'rank', 'how'][cur]); }
+        if (ok()) { fx('ok'); return go(['ready', 'ready', 'rank', 'how'][cur]); }
         G.id = any() ? 0 : G.id + dt;
         if (G.id > 12000) go('rank');
         set(U.best, G.hs[0] ? 'RÉCORD  ' + G.hs[0].n + '  ' + G.hs[0].s : '');
@@ -613,8 +811,18 @@
       up(dt) { G.id += dt; if ((G.id > 400 && ok()) || G.id > 20000) { fx('ok'); go('title'); } },
     },
     rank: {
-      in() { G.id = 0; rank(); },
-      up(dt) { G.id += dt; if ((G.id > 600 && ok()) || G.id > 12000) go('title'); },
+      in() { G.id = 0; G.rl = G.df; rank(); },
+      up(dt) {
+        const n = nav();
+        G.id += dt;
+        if (n.x) {
+          G.rl = (G.rl + n.x + DF.length) % DF.length;
+          G.id = Math.min(G.id, 601);
+          rank();
+          fx('move');
+        }
+        if ((G.id > 600 && ok()) || G.id > 12000) go('title');
+      },
     },
     ready: {
       in() {
@@ -623,6 +831,8 @@
         reset();
         G.cd = 0;
         music(S, 'off');
+        const hz = MAPS[G.mi].hz;
+        U.rh.setText(hz.n + ': ' + hz.d).setVisible(!!DF[G.df][1]);
         fx('map', W / 2, H / 2, G.mi);
       },
       up(dt) {
@@ -670,7 +880,7 @@
         G.mi = (G.mi + 1) % MAPS.length;
         G.t = Math.max(G.t, 0);
         G.C.forEach((c) => c.st == 1 && settle(c));
-        G.P.forEach((p) => Object.assign(p, { pw: null, sk: 0, slow: 0, fast: 0, dz: 0, luck: 0 }));
+        G.P.forEach((p) => Object.assign(p, { pw: null, sk: 0, slow: 0, fast: 0, dz: 0, luck: 0, kx: 0 }));
         const [a, b] = [G.P[0].sc, G.P[1].sc];
         G.win = a == b ? -1 : a > b ? 0 : 1;
         G.et = 0;
@@ -723,18 +933,24 @@
 
   const valid = (e) => e && typeof e.n == 'string' && /^[A-Z]{1,3}$/.test(e.n) && Number.isInteger(e.s) && e.s >= 0;
 
+  async function read(k) {
+    const st = window.platanusArcadeStorage;
+    if (st) {
+      const r = await st.get(k);
+      return r && r.found ? r.value : null;
+    }
+    const r = window.localStorage.getItem(k);
+    return r && JSON.parse(r);
+  }
+
   async function load() {
     try {
-      const st = window.platanusArcadeStorage;
-      let v;
-      if (st) {
-        const r = await st.get(SK);
-        v = r && r.found ? r.value : null;
-      } else {
-        const r = window.localStorage.getItem(SK);
-        v = r && JSON.parse(r);
+      let v = await read(SK);
+      if (!Array.isArray(v) || v.length != DF.length || !v.every(Array.isArray)) {
+        v = await read(SK1);
+        v = DF.map((_, i) => (i || !Array.isArray(v) ? [] : v));
       }
-      if (Array.isArray(v)) G.hs = G.hs.concat(v.filter(valid)).map((e) => ({ n: e.n, s: e.s })).sort((a, b) => b.s - a.s).slice(0, 8);
+      v.forEach((l, i) => { G.lb[i] = G.lb[i].concat(l.filter(valid)).map((e) => ({ n: e.n, s: e.s })).sort((a, b) => b.s - a.s).slice(0, 8); });
       if (G.ph == 'rank') rank();
     } catch (e) { /* ranking stays in memory */ }
   }
@@ -742,8 +958,8 @@
   async function save() {
     try {
       const st = window.platanusArcadeStorage;
-      if (st) await st.set(SK, G.hs);
-      else window.localStorage.setItem(SK, JSON.stringify(G.hs));
+      if (st) await st.set(SK, G.lb);
+      else window.localStorage.setItem(SK, JSON.stringify(G.lb));
     } catch (e) { /* ranking stays in memory */ }
   }
 
@@ -802,6 +1018,7 @@
 
   function build() {
     kitTex(S);
+    if (!S.textures.exists('hz')) hzTmp();
     sg = S.physics.add.staticGroup();
     pg = S.physics.add.staticGroup();
     const bz = [];
@@ -819,7 +1036,7 @@
       const s = S.physics.add.sprite(0, 0, 'p' + i, 0).setOrigin(0.5, 1).setDepth(4);
       s.body.setSize(18, 34).setOffset(7, 6);
       s.body.maxVelocity.y = PH.fall;
-      s.o = { i, s, sc: 0, sk: 0, k: null, pw: null, slow: 0, stun: 0, inv: 0, np: 0, fast: 0, dz: 0, luck: 0, rf: 0, cy: 0, jb: 0, cj: 0, g: 0, vy: 0 };
+      s.o = { i, s, sc: 0, sk: 0, k: null, pw: null, slow: 0, stun: 0, inv: 0, np: 0, fast: 0, dz: 0, luck: 0, rf: 0, cy: 0, jb: 0, cj: 0, g: 0, vy: 0, kx: 0 };
       G.P.push(s.o);
     });
     const ps = G.P.map((p) => p.s);
@@ -855,11 +1072,12 @@
     deco(S, c);
     big(c, 96, 'FIEBRE DE', 6);
     big(c, 172, 'TESOROS', 10);
-    U.menu = ['JUGAR', 'RANKING', 'CÓMO JUGAR'].map((s, i) => L(c, 400, 300 + i * 48, s, 3));
+    U.hz = L(c, 400, 252, '', 2, 0xff9a3c);
+    U.menu = ['JUGAR', 'PELIGROS', 'RANKING', 'CÓMO JUGAR'].map((s, i) => L(c, 400, 300 + i * 48, s, 3));
     U.mc = S.add.image(0, 0, 'key', 6).setScale(2);
     c.add(U.mc);
     U.best = L(c, 400, 474, '', 2, 0xffffff);
-    L(c, 400, 572, 'PALANCA: ELEGIR Y CAMBIAR MAPA. BOTÓN 1: CONFIRMAR', 2, 0x8a84b8);
+    L(c, 400, 572, 'PALANCA: ELEGIR Y CAMBIAR. BOTÓN 1: CONFIRMAR', 2, 0x8a84b8);
 
     c = mkUI('how', 0.93);
     big(c, 40, 'CÓMO JUGAR', 4);
@@ -887,14 +1105,16 @@
 
     c = mkUI('rank', 0.9);
     big(c, 60, 'RANKING', 6);
+    U.rl = L(c, 400, 108, '', 2, 0xff9a3c);
     U.rc = S.add.image(190, 0, 'key', 6).setScale(2);
     c.add(U.rc);
     U.rk = [...Array(8).keys()].map((i) => [L(c, 230, 140 + i * 46, '', 3, 0xffffff, 0), L(c, 330, 140 + i * 46, '', 3, 0xffffff, 0), L(c, 570, 140 + i * 46, '', 3, 0xffffff, 1)]);
-    L(c, 400, 572, 'BOTÓN PARA VOLVER', 2, 0x8a84b8);
+    L(c, 400, 572, 'PALANCA: CAMBIAR NIVEL. BOTÓN PARA VOLVER', 2, 0x8a84b8);
 
     c = mkUI('ready', 0);
     U.cd = L(c, 400, 300, '', 12, 0xffd23f);
     U.pt = [0, 1].map((i) => L(c, 0, 0, 'P' + (i + 1), 2, PC[i]));
+    U.rh = L(c, 400, 400, '', 2, 0xff9a3c);
 
     c = mkUI('pause', 0.75);
     big(c, 270, 'PAUSA', 8);
