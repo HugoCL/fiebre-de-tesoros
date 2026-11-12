@@ -1226,6 +1226,9 @@
 
   const PAL = {
     o: '#1b1326',
+    e: '#d9966a',
+    x: '#3b2418',
+    X: '#5e3a24',
     h: '#b0763a',
     H: '#7a4a22',
     s: '#f6cfa0',
@@ -1254,31 +1257,46 @@
     p: '#ff6ec7',
   };
 
-  const P_TOP =
+  // Players are 16x20: a head (rows 0-7, one per player), eyes (8-9), torso with arms (10-15) and legs (16-19).
+  // Frames: 0 idle, 1-2 walk, 3 jump, 4 fall, 5 stunned, 6 cheering. c and d are the player's colour and its shade.
+  const P_HEAD = [
     '................' +
-    '.....oooooo.....' +
-    '....ohhhhhho....' +
-    '....ohhhhhho....' +
-    '....occcccco....' +
-    '..oohhhhhhhhoo..' +
-    '..oooooooooooo..';
-  const P_EYE = '...osssossoso...' + '...osssossoso...';
-  const P_KO = '...osooosoooo...' + '...osssssssso...';
-  const P_MID =
-    '....osssssso....' +
-    '...occcccccco...' +
-    '..osccccccccso..' +
-    '..osccccccccso..' +
-    '...oddddddddo...' +
-    '...occcccccco...' +
-    '...occcooccco...';
-  const P_LEG = [
-    '...obbo..obbo...' + '...obbo..obbo...' + '...obbbo.obbbo..' + '...oooo..oooo...',
-    '..obbo....obbo..' + '.obbbo....obbbo.' + '.oooo......oooo.' + '................',
-    '....obbobbo.....' + '....obbobbbo....' + '....ooo.oooo....' + '................',
-    '..obbbo..obbo...' + '..oooo...obbbo..' + '.........oooo...' + '................',
-    '...obbo..obbo...' + '..obbo....obbo..' + '..ooo......ooo..' + '................',
+      '.....oooooo.....' +
+      '....ohhhhhHo....' +
+      '....ohhhhhHo....' +
+      '....occcccdo....' +
+      '..oohhhhhhhhhoo.' +
+      '...ooHHHHHHHoo..' +
+      '...oeeeeeeeeo...',
+    '................' +
+      '.....oooooo.....' +
+      '....oxxxxxXxo...' +
+      '...oxxxxxxxXxo..' +
+      '.ooxxccccccccdo.' +
+      '.oXoxxxxxxxxxo..' +
+      '.oxoxxeeeeeexo..' +
+      '.oxoxeeeeeeeeo..',
   ];
+  const P_EYE = ['...ossssososo...' + '...ossssososo...', '...osssssssso...' + '...ossoosooso...'];
+  const P_ARM = [
+    '....oessssso....' + '..oocccccccdo...' + '.ohocccccccdso..' + '.ohocccccccoso..',
+    '....oessssso....' + '..oocccccccdo...' + '.ohocccccccdo...' + '.ohoscccccccso..',
+    '....oessssso.os.' + '..oocccccccdocs.' + '.ohocccccccddo..' + '.ohocccccccdo...',
+    '.s..oessosso..s.' + '.coocccccccdooc.' + '.oocccccccccdoo.' + '...ocsccccccdo..',
+    '....oessssso....' + '...occcccccdo...' + '..ohcccccccdo...' + '..ohcccccccco...',
+    '.s..oessRRso..s.' + '.coocccccccdooc.' + '.oocccccccccdoo.' + '...ocsccccccdo..',
+  ];
+  const P_BELT = ['..oohhhghhhoo...', '..oohhhghhhoso..', '...ohhhghhhho...', '..osohhghhhos...'];
+  const P_LEG = [
+    '...obbbobbbo....' + '...obbo.obbo....' + '..oHHHo.oHHHo...' + '..ooooo.ooooo...',
+    '...obbbobbbo....' + '..obbo...obbo...' + '.oHHHo...oHHHo..' + '.ooooo...ooooo..',
+    '....obbbbbo.....' + '....obbobbo.....' + '...oHHHoHHHo....' + '...oooooooo.....',
+    '...obbbobbbo....' + '..obbo..obbo....' + '..oHHo..oHHHo...' + '..ooo...ooooo...',
+    '...obbbobbbo....' + '...obbo..obbo...' + '...oHHHo.oHHHo..' + '...oooo..oooo...',
+    '...obbbobbbo....' + '....obbobbo.....' + '...oHHHo.oHHo...' + '...ooooo.ooo....',
+  ];
+  // Per frame: eyes, arms, belt, legs.
+  const P_FR = ['0000', '0111', '0002', '0203', '0324', '1435', '0520'];
 
   const CH_LID =
     '..oooooooooooo..' +
@@ -1438,10 +1456,9 @@
       MG.connect(AC.destination);
     }
 
-    const frames = [0, 1, 2, 3, 4].map((i) => P_TOP + P_EYE + P_MID + P_LEG[i]);
-    frames.push(P_TOP + P_KO + P_MID + P_LEG[0]);
     PC.forEach((col, i) => {
       const c = Phaser.Display.Color.IntegerToColor(col);
+      const frames = P_FR.map(([e, a, b, l]) => P_HEAD[i] + P_EYE[e] + P_ARM[a] + P_BELT[b] + '...obbbbbbbo....' + P_LEG[l]);
       sheet(scene, 'p' + i, 16, 20, frames, { ...PAL, c: hex(col), d: c.clone().darken(28).rgba }, 2);
     });
     sheet(scene, 'chest', 16, 16, [CH_LID + CH_BASE, CH_OPEN + CH_BASE], PAL, 2);
@@ -1916,7 +1933,7 @@
     end: (s, x, y, a) => {
       s.cameras.main.flash(300, 255, 255, 255);
       (a < 0 ? [0, 1] : [a]).forEach((i, n) => {
-        const o = [s.add.image(a < 0 ? 320 + n * 160 : 400, 510, 'p' + i, 3).setOrigin(0.5, 1).setScale(3).setDepth(11).setFlipX(!!n)];
+        const o = [s.add.image(a < 0 ? 320 + n * 160 : 400, 510, 'p' + i, 6).setOrigin(0.5, 1).setScale(3).setDepth(11).setFlipX(!!n)];
         if (a >= 0) o.push(s.add.image(400, 384, 'crown').setScale(3).setDepth(11));
         s.tweens.add({ targets: o, y: '-=34', duration: 270, yoyo: true, repeat: 4, ease: 'Quad.easeOut', onComplete: () => o.forEach((e) => e.destroy()) });
       });
