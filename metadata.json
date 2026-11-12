@@ -1,5 +1,5 @@
 {
   "game_name": "Fiebre de tesoros",
-  "description": "Duelo 1 vs 1 de plataformas en tres mapas: busca las llaves, descubre qué cofre abre cada una y detén el slot para llevarte el tesoro. Con once powerups para sabotear a tu rival.",
+  "description": "Hay seis llaves y seis cofres, y ninguna te dice cuál abre. Cuando le achuntas, sobre el cofre gira un slot que paras pegándole desde abajo. Si abres varios seguidos, el premio sube a doble y a triple.",
   "player_mode": "two_player"
 }

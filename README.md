@@ -2,7 +2,7 @@
 
 ![Portada de Fiebre de tesoros](cover.png)
 
-Duelo 1 vs 1 de plataformas para el [Arcade Challenge de Platanus Hack 26](https://hack.platan.us/26/arcade?event=26-cl). Hay seis cofres y seis llaves, y nadie sabe qué llave abre qué cofre. Gana quien sume más puntos cuando el reloj llega a cero.
+Juego de plataformas para dos personas en el mismo arcade, hecho para el [Arcade Challenge de Platanus Hack 26](https://hack.platan.us/26/arcade?event=26-cl). Hay seis llaves y seis cofres, y la única forma de saber cuál abre cuál es probando, mientras el otro te persigue para quitarte la llave de un pisotón. Cada cofre que abres hace girar un slot que tienes que detener. Gana quien junte más puntos en 99 segundos, y si no hay con quién jugar, está el modo solo contra tu propio récord.
 
 ## Cómo se juega
 
@@ -16,17 +16,23 @@ Cada partida dura 99 segundos.
 
 Al abrirse los seis cofres llega una nueva oleada: los cofres se cierran y las llaves vuelven con otros colores y otro emparejamiento. Si queda un solo cofre cerrado durante 10 segundos, la oleada llega igual, así que nadie puede frenar la partida guardándose la última llave.
 
-En los últimos 15 segundos la música se acelera. Los ocho mejores puntajes quedan en el ranking con sus iniciales.
+En los últimos 15 segundos la música se acelera. Los ocho mejores puntajes quedan en el ranking con sus iniciales. Hay un ranking por cada modo y nivel de peligros, para que nadie compita con ventaja. En la pantalla de ranking, la palanca cambia de nivel con izquierda y derecha, y de modo con arriba y abajo.
+
+## Modo solo
+
+En el título, la fila MODO cambia entre DUELO y SOLO. En solo juegas sin rival durante los mismos 99 segundos, y al final ves tu puntaje y si entraste al ranking. No salen los powerups que solo sirven contra otro jugador: Tortuga, Imán, Tijeras, Mareo y Cambiazo.
 
 ## Mapas
 
-Los mapas rotan después de cada partida y también se eligen en el título, con la palanca sobre JUGAR. Cada uno tiene su propio arte y su propia canción. En los tres, los bordes laterales están conectados: quien sale por un lado entra por el otro.
+Los tres mapas son lugares de Chile. Rotan después de cada partida y también se eligen en el título, con la palanca sobre JUGAR. Cada uno tiene su propio arte, su propia canción y su propio peligro, que te aturde y te hace soltar la llave. En los tres, los bordes laterales están conectados: quien sale por un lado entra por el otro.
 
-| Mapa | Particularidad |
-|---|---|
-| Templo | El mapa inicial, con plataformas cortas en zigzag |
-| Caverna | Plataformas más anchas y música lenta con eco |
-| Volcán | Dos fosos en el suelo: quien cae reaparece arriba |
+| Mapa | Peligro | Particularidad |
+|---|---|---|
+| Rapa Nui | Los pukaos de los moái ruedan por las plataformas y caen de una a otra | El mapa inicial, con plataformas cortas en zigzag |
+| Torres del Paine | El hielo se desprende de la cornisa y cae donde avisa la grieta | Plataformas más anchas y música lenta con eco |
+| Villarrica | El suelo hace erupción, te lanza por el aire y llueven bolas de fuego | Dos fosos en el suelo: quien cae reaparece arriba |
+
+Cada peligro avisa antes de llegar. En el título, la fila PELIGROS elige qué tan seguido aparecen: APAGADOS, POCOS, NORMALES o MUCHOS.
 
 ## Powerups
 
@@ -57,7 +63,7 @@ Salen de las cajas que aparecen en el mapa y se usan con el botón 2. Quien va p
 
 ## Cómo está hecho
 
-Todo el juego vive en `game.js` y pesa 37,8 KB minificado, de un máximo de 50. No carga imágenes ni sonidos: los personajes, los mapas, la tipografía y los iconos se dibujan por código al arrancar, y la música y los efectos se sintetizan con Web Audio. Usa Phaser 3.87.0.
+Todo el juego vive en `game.js` y pesa 46,8 KB minificado, de un máximo de 50. No carga imágenes ni sonidos: los personajes, los mapas, la tipografía y los iconos se dibujan por código al arrancar, y la música y los efectos se sintetizan con Web Audio. Usa Phaser 3.87.0.
 
 Para probarlo:
 
