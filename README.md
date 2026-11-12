@@ -1,3 +1,77 @@
+# Fiebre de tesoros
+
+![Portada de Fiebre de tesoros](cover.png)
+
+Duelo 1 vs 1 de plataformas para el [Arcade Challenge de Platanus Hack 26](https://hack.platan.us/26/arcade?event=26-cl). Hay seis cofres y seis llaves, y nadie sabe qué llave abre qué cofre. Gana quien sume más puntos cuando el reloj llega a cero.
+
+## Cómo se juega
+
+Cada partida dura 99 segundos.
+
+1. **Toma una llave.** Basta con tocarla. Para cambiarla por otra, párate sobre la nueva y baja la palanca.
+2. **Pruébala en un cofre.** Si no abre, el cofre recuerda esa llave y queda marcado.
+3. **Detén el slot.** Si abre, sobre el cofre gira un slot con premios de 100 a 1000 puntos. Golpea la caja desde abajo o usa el botón 2 para detenerlo.
+4. **Mantén la racha.** Cada cofre seguido vale más: el segundo paga doble y desde el tercero pagan triple. El marcador avisa con `PRÓXIMO COFRE X2`.
+5. **Sabotea.** Pisa a tu rival para que suelte su llave y abre las cajas de powerups.
+
+Al abrirse los seis cofres llega una nueva oleada: los cofres se cierran y las llaves vuelven con otros colores y otro emparejamiento. Si queda un solo cofre cerrado durante 10 segundos, la oleada llega igual, así que nadie puede frenar la partida guardándose la última llave.
+
+En los últimos 15 segundos la música se acelera. Los ocho mejores puntajes quedan en el ranking con sus iniciales.
+
+## Mapas
+
+Los mapas rotan después de cada partida y también se eligen en el título, con la palanca sobre JUGAR. Cada uno tiene su propio arte y su propia canción. En los tres, los bordes laterales están conectados: quien sale por un lado entra por el otro.
+
+| Mapa | Particularidad |
+|---|---|
+| Templo | El mapa inicial, con plataformas cortas en zigzag |
+| Caverna | Plataformas más anchas y música lenta con eco |
+| Volcán | Dos fosos en el suelo: quien cae reaparece arriba |
+
+## Powerups
+
+Salen de las cajas que aparecen en el mapa y se usan con el botón 2. Quien va perdiendo por 300 puntos o más recibe con mayor frecuencia los que ayudan a remontar.
+
+| Powerup | Efecto |
+|---|---|
+| Tortuga | El rival se mueve lento durante 4,5 s |
+| Llave maestra | Abre cualquier cofre |
+| Revoltijo | Cambia qué llave abre cada cofre cerrado |
+| Imán | Le roba la llave al rival |
+| Lupa | Muestra durante 6 s qué cofre abre una llave |
+| Ají | Corres un 50 % más rápido durante 5 s |
+| Trébol | Tu próximo cofre gira un slot con mejores premios |
+| Tijeras | Corta la racha del rival |
+| Mareo | Invierte izquierda y derecha del rival durante 4 s |
+| Cambiazo | Intercambia tu posición con la del rival |
+| Terremoto | Lanza por el aire las llaves sueltas y aturde al rival si está en el suelo |
+
+## Controles
+
+| | Jugador 1 | Jugador 2 |
+|---|---|---|
+| Moverse | Palanca (`W` `A` `S` `D`) | Palanca (flechas) |
+| Saltar y confirmar | Botón 1 (`U`) | Botón 1 (`R`) |
+| Usar powerup y detener el slot | Botón 2 (`I`) | Botón 2 (`T`) |
+| Start | `Enter` | `2` |
+
+## Cómo está hecho
+
+Todo el juego vive en `game.js` y pesa 37,8 KB minificado, de un máximo de 50. No carga imágenes ni sonidos: los personajes, los mapas, la tipografía y los iconos se dibujan por código al arrancar, y la música y los efectos se sintetizan con Web Audio. Usa Phaser 3.87.0.
+
+Para probarlo:
+
+```bash
+npm install
+npm run dev
+```
+
+Luego abre `http://localhost:3001`.
+
+---
+
+El resto de este documento es el README original del desafío.
+
 # 🎮 Platanus Hack 26: Arcade Challenge
 
 At [Platanus Hack 26: Santiago](https://hack.platan.us/26-cl) (20-22 November) we will have an arcade machine. While we could put some cool retro games on it, it is way better if it can be turned into a challenge.
