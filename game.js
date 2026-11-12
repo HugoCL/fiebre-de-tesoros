@@ -742,7 +742,7 @@
         const col = k < 0.4 ? 0xff5a4d : k < 0.75 ? 0xff9a3c : 0xffe08a;
         gfx.fillStyle(0x1b1326).fillRect(h.x0 - 2, h.y - 2, 100, 10).fillStyle(col, on ? 1 : 0.6).fillRect(h.x0, h.y, 96, 6);
         for (let i = 0; i < 6; i++) {
-          const fh = (4 + 40 * k) * (0.55 + 0.45 * Math.sin(now / 60 + i * 2.4));
+          const fh = (14 + 30 * k) * (0.55 + 0.45 * Math.sin(now / 60 + i * 2.4));
           gfx.fillStyle(col).fillRect(h.x0 + 4 + i * 16, h.y - fh, 8, fh).fillStyle(0xffffff, 0.8).fillRect(h.x0 + 6 + i * 16, h.y - fh * 0.45, 4, fh * 0.45);
         }
         if (on) burst(h.x0 + Math.random() * 96, h.y, 1, col);
