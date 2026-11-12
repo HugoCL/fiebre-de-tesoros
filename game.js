@@ -6,28 +6,89 @@
   const PC = [0xe1ff00, 0xff6ec7];
   const KC = [0xff5a4d, 0x4da6ff, 0x5fe37a, 0xffd23f, 0xc77dff, 0xff9a3c];
   const REEL = [[100, 1], [200, 1], [300, 1], [500, 1], [100, 1], [200, 1], [300, 1], [1000, 0.5]];
-  const LEVEL = [
-    '.........................',
-    '.........................',
-    '.........................',
-    '.........................',
-    '=====.....=====.....=====',
-    '.........................',
-    '.........................',
-    '.....=====.....=====.....',
-    '.........................',
-    '..C...................C..',
-    '=====......===......=====',
-    '.........................',
-    '........C.......C........',
-    '......=====...=====......',
-    '.........................',
-    '...C.................C...',
-    '#########################',
+  const LUCK = [[300, 1], [500, 1], [1000, 0.5], [500, 1]];
+  // th picks the theme, L is the grid ('#' ground, '=' one-way platform, 'C' chest), PS, KS and BS are the
+  // surface cells where players, keys and powerup boxes appear, and tc the light sources in pixels.
+  const MAPS = [
+    {
+      n: 'TEMPLO', th: 0,
+      L: [
+        '.........................',
+        '.........................',
+        '.........................',
+        '.........................',
+        '=====.....=====.....=====',
+        '.........................',
+        '.........................',
+        '.....=====.....=====.....',
+        '.........................',
+        '..C...................C..',
+        '=====......===......=====',
+        '.........................',
+        '........C.......C........',
+        '......=====...=====......',
+        '.........................',
+        '...C.................C...',
+        '#########################',
+      ],
+      PS: [[6, 16], [18, 16]],
+      KS: [[2, 4], [22, 4], [12, 4], [7, 7], [17, 7], [12, 10]],
+      BS: [[12, 16], [8, 16], [16, 16], [10, 13], [14, 13], [4, 10], [20, 10], [9, 7], [15, 7]],
+      tc: [[400, 276], [176, 424], [624, 424]],
+    },
+    {
+      n: 'CAVERNA', th: 1,
+      L: [
+        '.........................',
+        '.........................',
+        '.........................',
+        '.........................',
+        '..=======.......=======..',
+        '.........................',
+        '.........................',
+        '====......=====......====',
+        '.........................',
+        '.....C.............C.....',
+        '...=====.........=====...',
+        '.........................',
+        '.C.....................C.',
+        '=====....=======....=====',
+        '.........................',
+        '......C...........C......',
+        '#########################',
+      ],
+      PS: [[3, 16], [21, 16]],
+      KS: [[4, 4], [20, 4], [12, 7], [1, 7], [23, 7], [12, 13]],
+      BS: [[12, 16], [9, 16], [15, 16], [10, 13], [14, 13], [3, 13], [21, 13], [7, 10], [17, 10], [7, 4], [17, 4]],
+      tc: [[400, 150], [288, 330], [512, 330]],
+    },
+    {
+      n: 'VOLCÁN', th: 2,
+      L: [
+        '.........................',
+        '.........................',
+        '.........................',
+        '.........................',
+        '===.......=====.......===',
+        '.........................',
+        '.........................',
+        '.....====.......====.....',
+        '.........................',
+        '..........C...C..........',
+        '====.....=======.....====',
+        '.........................',
+        '.....C.............C.....',
+        '...====...........====...',
+        '.........................',
+        '.C.....................C.',
+        '#####...#########...#####',
+      ],
+      PS: [[3, 16], [21, 16]],
+      KS: [[1, 4], [23, 4], [12, 4], [7, 7], [17, 7], [12, 16]],
+      BS: [[9, 16], [15, 16], [3, 13], [21, 13], [1, 10], [23, 10], [12, 10], [8, 7], [16, 7]],
+      tc: [[400, 430], [112, 250], [688, 250]],
+    },
   ];
-  const PS = [[6, 16], [18, 16]];
-  const KS = [[2, 4], [22, 4], [12, 4], [7, 7], [17, 7], [12, 10]];
-  const BS = [[12, 16], [8, 16], [16, 16], [10, 13], [14, 13], [4, 10], [20, 10], [9, 7], [15, 7]];
   const SK = 'fiebre-de-tesoros.scores.v1';
   const ABC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
@@ -59,11 +120,11 @@
   const KA = {};
   for (const [a, ks] of Object.entries(CABINET_KEYS)) for (const k of ks) KA[k.toLowerCase()] = a;
 
-  const G = { ph: '', t: 0, mx: 1, P: [], K: [], C: [], B: [], hs: [], win: -1 };
+  const G = { ph: '', t: 0, mi: 0, lm: -1, P: [], K: [], C: [], B: [], hs: [], win: -1 };
   const held = {}, pressed = {};
   const UI = {}, U = {}, hud = { sc: [], sk: [], ki: [], pi: [], pn: [], ch: [] };
   const nm = { l: [], i: 0 };
-  let S, gfx, kg, cur = 0;
+  let S, gfx, kg, sg, pg, cur = 0;
 
   const sh = (a) => {
     for (let i = a.length; --i > 0;) {
@@ -102,6 +163,7 @@
   function mkKey(m) {
     const s = kg.create(0, 0, 'key', m ? 6 : 0).setDepth(3);
     s.body.setSize(20, 12).setDragX(500).setBounce(0, 0.2);
+    s.body.maxVelocity.y = PH.fall;
     const k = { id: G.K.length, m, live: true, own: null, s, c: 0xffffff };
     G.K.push(k);
     return k;
@@ -145,7 +207,7 @@
   // ---- chests -----------------------------------------------------------
 
   function settle(c) {
-    const v = REEL[c.ri][0], n = v * c.x;
+    const v = c.r[c.ri][0], n = v * c.x;
     G.P[c.by].sc += n;
     c.st = 2;
     c.b.body.enable = false;
@@ -158,8 +220,10 @@
     G.P[1 - p.i].sk = 0;
     c.x = p.sk = Math.min(p.sk + 1, 3);
     if (c.x > 1) fx('streak', c.s.x, c.s.y, p);
-    c.ri = (Math.random() * REEL.length) | 0;
-    c.rt = REEL[c.ri][1] * 130;
+    c.r = p.luck ? LUCK : REEL;
+    p.luck = 0;
+    c.ri = (Math.random() * c.r.length) | 0;
+    c.rt = c.r[c.ri][1] * 130;
     c.life = 6000;
     c.b.body.enable = true;
     fx('open', c.s.x, c.s.y, c.s);
@@ -185,9 +249,26 @@
   // ---- powerups ---------------------------------------------------------
 
   const PW = [
-    { id: 'slow', n: 'TORTUGA', d: 'RIVAL LENTO', f: 0, w: 35, wl: 30, use(p, r) { r.slow = 4500; fx('slow', r.s.x, r.s.y, p.i); } },
+    { id: 'slow', n: 'TORTUGA', d: 'RIVAL LENTO', f: 0, w: 14, wl: 12, use(p, r) { r.slow = 4500; fx('slow', r.s.x, r.s.y, p.i); } },
     {
-      id: 'grab', n: 'IMÁN', d: 'ROBA LA LLAVE', f: 3, w: 25, wl: 25,
+      id: 'master', n: 'LLAVE MAESTRA', d: 'ABRE TODO', f: 1, w: 6, wl: 14,
+      use(p) {
+        if (p.k) drop(p);
+        take(p, mkKey(1));
+        fx('master', p.s.x, p.s.y, p.i);
+      },
+    },
+    {
+      id: 'mix', n: 'REVOLTIJO', d: 'MEZCLA COFRES', f: 2, w: 8, wl: 4,
+      use(p) {
+        const cs = G.C.filter((c) => !c.st), ks = sh(cs.map((c) => c.k));
+        cs.forEach((c, i) => { c.k = ks[i]; c.m = []; });
+        G.C.forEach((c) => { c.lk = 0; });
+        fx('mix', p.s.x, p.s.y, p.i);
+      },
+    },
+    {
+      id: 'grab', n: 'IMÁN', d: 'ROBA LA LLAVE', f: 3, w: 10, wl: 12,
       use(p, r) {
         const k = r.k || (!p.k && G.K.filter((k) => k.live && !k.own).sort((a, b) => dist(a.s, p.s) - dist(b.s, p.s))[0]);
         if (!k) return fx('fizz', p.s.x, p.s.y, p.i);
@@ -197,19 +278,48 @@
       },
     },
     {
-      id: 'mix', n: 'REVOLTIJO', d: 'MEZCLA COFRES', f: 2, w: 20, wl: 10,
+      id: 'look', n: 'LUPA', d: 'REVELA UN COFRE', f: 4, w: 12, wl: 10,
       use(p) {
-        const cs = G.C.filter((c) => !c.st), ks = sh(cs.map((c) => c.k));
-        cs.forEach((c, i) => { c.k = ks[i]; c.m = []; });
-        fx('mix', p.s.x, p.s.y, p.i);
+        const k = p.k && !p.k.m ? p.k : sh(G.K.filter((k) => k.live && !k.m))[0], c = k && G.C.find((c) => !c.st && c.k === k);
+        if (!c) return fx('fizz', p.s.x, p.s.y, p.i);
+        c.lk = 6000;
+        fx('look', c.s.x, c.s.y, p.i);
+      },
+    },
+    { id: 'fast', n: 'AJÍ', d: 'CORRES MÁS', f: 5, w: 14, wl: 10, use(p) { p.slow = 0; p.fast = 5000; fx('fast', p.s.x, p.s.y, p.i); } },
+    { id: 'luck', n: 'TRÉBOL', d: 'MEJORES PREMIOS', f: 6, w: 8, wl: 12, use(p) { p.luck = 1; fx('luck', p.s.x, p.s.y, p.i); } },
+    {
+      id: 'cut', n: 'TIJERAS', d: 'CORTA LA RACHA', f: 7, w: 4, wl: 12,
+      use(p, r) {
+        if (!r.sk) return fx('fizz', p.s.x, p.s.y, p.i);
+        r.sk = 0;
+        fx('cut', r.s.x, r.s.y, p.i);
+      },
+    },
+    { id: 'dizzy', n: 'MAREO', d: 'RIVAL AL REVÉS', f: 8, w: 12, wl: 8, use(p, r) { r.dz = 4000; fx('dizzy', r.s.x, r.s.y, p.i); } },
+    {
+      id: 'trade', n: 'CAMBIAZO', d: 'CAMBIA DE LUGAR', f: 9, w: 6, wl: 4,
+      use(p, r) {
+        const [a, b] = [p.s.body, r.s.body], [x, y, rx, ry] = [p.s.x, p.s.y, r.s.x, r.s.y];
+        a.reset(rx, ry);
+        b.reset(x, y);
+        fx('trade', rx, ry, p.i);
       },
     },
     {
-      id: 'master', n: 'LLAVE MAESTRA', d: 'ABRE TODO', f: 1, w: 20, wl: 35,
-      use(p) {
-        if (p.k) drop(p);
-        take(p, mkKey(1));
-        fx('master', p.s.x, p.s.y, p.i);
+      id: 'quake', n: 'TERREMOTO', d: 'SACUDE TODO', f: 10, w: 6, wl: 2,
+      use(p, r) {
+        G.K.forEach((k) => {
+          if (!k.live || k.own) return;
+          k.s.body.setVelocity((Math.random() * 2 - 1) * 200, -420);
+        });
+        const b = r.s.body;
+        if ((b.blocked.down || b.touching.down) && r.inv <= 0) {
+          r.stun = 700;
+          r.inv = 1200;
+          if (r.k) drop(r);
+        }
+        fx('quake', p.s.x, p.s.y, p.i);
       },
     },
   ];
@@ -232,7 +342,7 @@
   }
 
   function spawnBox() {
-    const free = BS.map(([c, r]) => [c * T + T / 2, HB + r * T - 18]).filter(([x, y]) =>
+    const free = MAPS[G.lm].BS.map(([c, r]) => [c * T + T / 2, HB + r * T - 18]).filter(([x, y]) =>
       !G.B.some((b) => dist(b.s, { x, y }) < 40) && !G.K.some((k) => k.live && dist(k.s, { x, y }) < 40));
     if (!free.length) return false;
     const [x, y] = free[(Math.random() * free.length) | 0];
@@ -244,7 +354,8 @@
   // ---- round ------------------------------------------------------------
 
   function reset() {
-    Object.assign(G, { t: 99000, rush: 0, bt: 4000, win: -1, wn: 99, last: null });
+    const { PS, KS } = MAPS[G.lm];
+    Object.assign(G, { t: 99000, rush: 0, bt: 4000, win: -1, wn: 99 });
     G.B.splice(0).forEach((b) => b.s.destroy());
     G.K.splice(6).forEach((k) => k.s.destroy());
     const cs = sh(KC.slice());
@@ -257,11 +368,11 @@
     });
     const ks = sh(G.K.slice());
     G.C.forEach((c, i) => {
-      Object.assign(c, { st: 0, k: ks[i], m: [], by: -1, ri: 0, rt: 0, life: 0, x: 1 });
+      Object.assign(c, { st: 0, k: ks[i], m: [], by: -1, ri: 0, rt: 0, life: 0, x: 1, r: REEL, lk: 0 });
       c.b.body.enable = false;
     });
     G.P.forEach((p, i) => {
-      Object.assign(p, { sc: 0, sk: 0, k: null, pw: null, slow: 0, stun: 0, inv: 0, np: 0, cy: 0, jb: 0, cj: 0, vy: 0 });
+      Object.assign(p, { sc: 0, sk: 0, k: null, pw: null, slow: 0, stun: 0, inv: 0, np: 0, fast: 0, dz: 0, luck: 0, rf: 0, cy: 0, jb: 0, cj: 0, vy: 0 });
       const x = PS[i][0] * T + T / 2, y = HB + PS[i][1] * T;
       p.s.setPosition(x, y).setFlipX(i == 1).setAlpha(1);
       p.s.body.reset(x, y);
@@ -281,12 +392,23 @@
     fx('stomp', v.s.x, v.s.y, v.s);
   }
 
+  // Wraps sideways. Whatever falls out of the bottom (the Volcán pits) comes back in just under the HUD.
+  function ring(s) {
+    const b = s.body;
+    s.x = Phaser.Math.Wrap(s.x, -16, W + 16);
+    if (b.top <= H) return;
+    const [vx, vy] = [b.velocity.x, Math.min(b.velocity.y, PH.fall)];
+    b.reset(s.x, s.y + HB + 2 - b.top);
+    b.setVelocity(vx, vy);
+    fx('pit', s.x, s.y, s);
+  }
+
   function move(p, dt) {
-    const s = p.s, b = s.body, n = inp(p.i), st = p.stun > 0, x = st ? 0 : n.x;
+    const s = p.s, b = s.body, n = inp(p.i), st = p.stun > 0, x = st ? 0 : p.dz > 0 ? -n.x : n.x;
     const g = b.blocked.down || b.touching.down;
     p.cy = g ? PH.coy : p.cy - dt;
     p.jb = n.jp && !st ? PH.buf : p.jb - dt;
-    b.setVelocityX(x * PH.run * (p.slow > 0 ? 0.45 : 1));
+    b.setVelocityX(x * PH.run * (p.slow > 0 ? 0.45 : 1) * (p.fast > 0 ? 1.5 : 1));
     if (p.jb > 0 && p.cy > 0 && !st) {
       b.setVelocityY(-PH.jump * (p.slow > 0 ? 0.8 : 1));
       p.cy = p.jb = 0;
@@ -305,9 +427,12 @@
       if (n.b) act(p);
     }
     if (x) s.setFlipX(x < 0);
-    s.setFrame(st ? 5 : !g ? (b.velocity.y < 0 ? 3 : 4) : x ? 1 + (((S.time.now / 110) | 0) & 1) : 0);
-    s.setAlpha(p.inv > 0 && !st && ((S.time.now / 90) | 0) & 1 ? 0.5 : 1).setTint(p.slow > 0 ? 0x99bb99 : 0xffffff);
-    S.physics.world.wrap(s, 16);
+    const rf = g && x ? 1 + (((S.time.now / 110) | 0) & 1) : 0;
+    if (rf && rf != p.rf && !st) fx('step', s.x, s.y, s);
+    p.rf = rf;
+    s.setFrame(st ? 5 : !g ? (b.velocity.y < 0 ? 3 : 4) : rf);
+    s.setAlpha(p.inv > 0 && !st && ((S.time.now / 90) | 0) & 1 ? 0.5 : 1).setTint(p.slow > 0 ? 0x99bb99 : st ? 0xffffff : p.dz > 0 ? 0xc77dff : p.fast > 0 ? 0xffb07a : 0xffffff);
+    ring(s);
   }
 
   function view() {
@@ -316,11 +441,16 @@
       c.s.setFrame(c.st ? 1 : 0);
       c.t.setVisible(c.st == 1);
       if (c.st == 1) {
-        const v = REEL[c.ri][0], x = c.s.x - 40, y = c.s.y - 80;
+        const v = c.r[c.ri][0], x = c.s.x - 40, y = c.s.y - 80;
         set(c.t, '' + v * c.x);
         c.t.setTint(v == 1000 ? 0xffd23f : 0xffffff);
         gfx.fillStyle(PC[c.by]).fillTriangle(x + 32, y + 32, x + 48, y + 32, x + 40, y + 42);
         gfx.fillStyle(0x1b1326, 0.92).fillRoundedRect(x, y, 80, 32, 6).lineStyle(2, PC[c.by]).strokeRoundedRect(x, y, 80, 32, 6);
+      }
+      if (!c.st && c.lk > 0) {
+        const x = c.s.x, y = c.s.y - 50 + 3 * Math.sin(S.time.now / 120);
+        gfx.fillStyle(0x1b1326).fillRoundedRect(x - 10, y - 8, 20, 12, 3).fillTriangle(x - 6, y + 3, x + 6, y + 3, x, y + 11);
+        gfx.fillStyle(c.k.c).fillRect(x - 7, y - 5, 14, 6).fillTriangle(x - 4, y + 2, x + 4, y + 2, x, y + 8);
       }
       if (!c.st) c.m.forEach((id, n) => {
         const x = c.s.x - c.m.length * 5 + n * 10, y = c.s.y - 28;
@@ -348,6 +478,8 @@
     G.t -= dt;
     G.P.forEach((p) => {
       p.slow -= dt;
+      p.fast -= dt;
+      p.dz -= dt;
       p.np -= dt;
       if (p.stun > 0) p.stun -= dt;
       else p.inv -= dt;
@@ -362,12 +494,13 @@
       music(S, 'rush');
     }
     G.C.forEach((c) => {
+      if (c.lk > 0) c.lk -= dt;
       if (c.st != 1) return;
       c.life -= dt;
       c.rt -= dt;
       if (c.rt <= 0) {
-        c.ri = (c.ri + 1) % REEL.length;
-        c.rt += REEL[c.ri][1] * 130;
+        c.ri = (c.ri + 1) % c.r.length;
+        c.rt += c.r[c.ri][1] * 130;
         fx('tick', c.s.x, c.s.y, c.by);
       }
       if (c.life <= 0) settle(c);
@@ -405,7 +538,8 @@
 
   function menu() {
     U.menu.forEach((t, i) => t.setTint(i == cur ? 0xffd23f : 0x8a84b8));
-    U.mc.setPosition(266, 300 + cur * 48);
+    set(U.menu[0], 'JUGAR: ' + MAPS[G.mi].n);
+    U.mc.setPosition(cur ? 266 : 236, 300 + cur * 48);
   }
 
   function rank() {
@@ -433,10 +567,26 @@
 
   const PHASES = {
     title: {
-      in() { G.id = 0; cur = 0; menu(); music(S, 'title'); },
+      in() {
+        G.id = 0;
+        cur = 0;
+        if (G.lm != G.mi) {
+          lvl();
+          reset();
+        }
+        menu();
+        music(S, 'title');
+      },
       up(dt) {
         const n = nav();
         if (n.y) { cur = (cur + n.y + 3) % 3; menu(); fx('move'); }
+        else if (n.x && !cur) {
+          G.mi = (G.mi + n.x + MAPS.length) % MAPS.length;
+          lvl();
+          reset();
+          menu();
+          fx('move');
+        }
         if (ok()) { fx('ok'); return go(['ready', 'rank', 'how'][cur]); }
         G.id = any() ? 0 : G.id + dt;
         if (G.id > 12000) go('rank');
@@ -452,7 +602,14 @@
       up(dt) { G.id += dt; if ((G.id > 600 && ok()) || G.id > 12000) go('title'); },
     },
     ready: {
-      in() { reset(); G.cd = 0; music(S, 'off'); },
+      in() {
+        G.last = null;
+        lvl();
+        reset();
+        G.cd = 0;
+        music(S, 'off');
+        fx('map', W / 2, H / 2, G.mi);
+      },
       up(dt) {
         G.cd += dt;
         const s = (G.cd / 1000) | 0, lab = s < 3 ? '' + (3 - s) : '¡YA!';
@@ -467,7 +624,7 @@
         G.P.forEach((p) => move(p, dt));
         G.K.forEach((k) => {
           if (k.own) k.s.setPosition(k.own.s.x, k.own.s.y - 52);
-          else if (k.live) S.physics.world.wrap(k.s, 16);
+          else if (k.live) ring(k.s);
         });
         G.P.forEach(grab);
         stomp(G.P[0], G.P[1]);
@@ -486,6 +643,7 @@
       in() {
         S.physics.pause();
         music(S, 'off');
+        G.mi = (G.mi + 1) % MAPS.length;
         G.t = Math.max(G.t, 0);
         G.C.forEach((c) => c.st == 1 && settle(c));
         const [a, b] = [G.P[0].sc, G.P[1].sc];
@@ -588,37 +746,56 @@
     return txt(S, x, y, s, z, col).setOrigin(ox, 0.5).setDepth(8);
   }
 
-  function build() {
-    kitTex(S);
-    bg(S);
-    const sg = S.physics.add.staticGroup(), pg = S.physics.add.staticGroup(), bz = [];
-    kg = S.physics.add.group();
-    gfx = S.add.graphics().setDepth(5);
+  // Loads MAPS[G.mi]. The colliders and the six chests live on across maps, so only their contents move.
+  function lvl() {
+    if (G.lm === G.mi) return;
+    G.lm = G.mi;
+    const m = MAPS[G.mi], n = [];
+    sg.clear(true, true);
+    pg.clear(true, true);
     // One extra column per side, mirrored off screen, so the floor continues under a wrapping player.
-    LEVEL.forEach((row, r) => {
+    m.L.forEach((row, r) => {
       for (let c = -1; c <= 25; c++) {
         const ch = row[(c + 25) % 25], x = c * T + T / 2, y = HB + r * T;
-        if (ch == '#') sg.create(x, y + T / 2, 'tile', 0).setDepth(1);
+        if (ch == '#') sg.create(x, y + T / 2, 'tile', m.th).setDepth(1);
         else if (ch == '=') {
-          const s = pg.create(x, y + 6, 'plat', row[(c + 24) % 25] != '=' ? 0 : row[(c + 26) % 25] != '=' ? 2 : 1).setDepth(1);
+          const s = pg.create(x, y + 6, 'plat', m.th * 3 + (row[(c + 24) % 25] != '=' ? 0 : row[(c + 26) % 25] != '=' ? 2 : 1)).setDepth(1);
           s.body.setSize(T, 8, false);
           const k = s.body.checkCollision;
           k.down = k.left = k.right = false;
-        } else if (ch == 'C') {
-          const cy = y + T / 2, b = S.physics.add.existing(S.add.zone(x, cy - 64, 48, 32), true);
-          b.body.enable = false;
-          b.o = { id: G.C.length, s: S.add.image(x, cy, 'chest', 0).setDepth(2), st: 0, k: null, m: [], by: -1, ri: 0, rt: 0, life: 0, x: 1, b, t: txt(S, x, cy - 64, '', 3).setOrigin(0.5, 0.5).setDepth(5) };
-          G.C.push(b.o);
-          bz.push(b);
-        }
+        } else if (ch == 'C' && c >= 0 && c < 25) n.push([x, y + T / 2]);
       }
     });
+    G.C.forEach((c, i) => {
+      const [x, y] = n[i];
+      c.s.setPosition(x, y);
+      c.t.setPosition(x, y - 64);
+      c.b.setPosition(x, y - 64).body.updateFromGameObject();
+    });
+    m.PS.forEach(([x, y], i) => U.pt[i].setPosition(x * T + T / 2, HB + y * T - 64));
+    bg(S, m);
+  }
+
+  function build() {
+    kitTex(S);
+    sg = S.physics.add.staticGroup();
+    pg = S.physics.add.staticGroup();
+    const bz = [];
+    kg = S.physics.add.group();
+    gfx = S.add.graphics().setDepth(5);
+    for (let i = 0; i < 6; i++) {
+      const b = S.physics.add.existing(S.add.zone(0, 0, 48, 32), true);
+      b.body.enable = false;
+      b.o = { id: i, s: S.add.image(0, 0, 'chest', 0).setDepth(2), st: 0, k: null, m: [], by: -1, ri: 0, rt: 0, life: 0, x: 1, r: REEL, lk: 0, b, t: txt(S, 0, 0, '', 3).setOrigin(0.5, 0.5).setDepth(5) };
+      G.C.push(b.o);
+      bz.push(b);
+    }
     for (let i = 0; i < 6; i++) mkKey(0);
     [0, 1].forEach((i) => {
       const s = S.physics.add.sprite(0, 0, 'p' + i, 0).setOrigin(0.5, 1).setDepth(4);
       s.body.setSize(18, 34).setOffset(7, 6);
       s.body.maxVelocity.y = PH.fall;
-      s.o = { i, s, sc: 0, sk: 0, k: null, pw: null, slow: 0, stun: 0, inv: 0, np: 0, cy: 0, jb: 0, cj: 0, g: 0, vy: 0 };
+      s.o = { i, s, sc: 0, sk: 0, k: null, pw: null, slow: 0, stun: 0, inv: 0, np: 0, fast: 0, dz: 0, luck: 0, rf: 0, cy: 0, jb: 0, cj: 0, g: 0, vy: 0 };
       G.P.push(s.o);
     });
     const ps = G.P.map((p) => p.s);
@@ -656,6 +833,7 @@
     U.mc = S.add.image(0, 0, 'key', 6).setScale(2);
     c.add(U.mc);
     U.best = L(c, 400, 474, '', 2, 0xffffff);
+    L(c, 400, 546, 'IZQ O DER EN JUGAR: CAMBIAR MAPA', 2, 0x8a84b8);
     L(c, 400, 572, 'PALANCA: ELEGIR. BOTÓN 1: CONFIRMAR', 2, 0x8a84b8);
 
     c = mkUI('how', 0.9);
@@ -687,7 +865,7 @@
 
     c = mkUI('ready', 0);
     U.cd = L(c, 400, 300, '', 12, 0xffd23f);
-    PS.forEach(([x, y], i) => L(c, x * T + T / 2, HB + y * T - 64, 'P' + (i + 1), 2, PC[i]));
+    U.pt = [0, 1].map((i) => L(c, 0, 0, 'P' + (i + 1), 2, PC[i]));
 
     c = mkUI('pause', 0.75);
     big(c, 270, 'PAUSA', 8);
@@ -711,6 +889,7 @@
     S = this;
     S.G = G;
     build();
+    lvl();
     reset();
     load();
     go('title');
@@ -928,8 +1107,8 @@
     }, 2);
     sheet(scene, 'box', 12, 12, [BOX, BOX.replace(/v/g, 'u')], PAL, 2);
     sheet(scene, 'ic', 8, 8, IC, PAL, 2);
-    sheet(scene, 'tile', 16, 16, [TILE], PAL, 2);
-    sheet(scene, 'plat', 16, 6, [PL_END, PL_MID, flip(PL_END, 16)], PAL, 2);
+    sheet(scene, 'tile', 16, 16, [TILE, TILE, TILE], PAL, 2);
+    sheet(scene, 'plat', 16, 6, [0, 1, 2].flatMap(() => [PL_END, PL_MID, flip(PL_END, 16)]), PAL, 2);
     sheet(scene, 'px', 1, 1, ['w'], PAL, 4);
 
     const cols = 27;
@@ -974,7 +1153,8 @@
 
   const TORCH = [[400, 276], [176, 424], [624, 424]];
 
-  function bg(scene) {
+  function bg(scene, m) {
+    if (scene.textures.exists('bg')) return;
     const t = scene.textures.createCanvas('bg', 800, 600);
     const c = t.getContext();
     const grad = c.createLinearGradient(0, 0, 0, 600);
