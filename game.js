@@ -120,7 +120,7 @@
   const KA = {};
   for (const [a, ks] of Object.entries(CABINET_KEYS)) for (const k of ks) KA[k.toLowerCase()] = a;
 
-  const G = { ph: '', t: 0, mi: 0, lm: -1, P: [], K: [], C: [], B: [], hs: [], win: -1 };
+  const G = { ph: '', t: 0, wv: 1, wd: 0, mi: 0, lm: -1, P: [], K: [], C: [], B: [], hs: [], win: -1 };
   const held = {}, pressed = {};
   const UI = {}, U = {}, hud = { sc: [], sk: [], ki: [], pi: [], pn: [], ch: [], st: [] };
   const nm = { l: [], i: 0 };
@@ -353,24 +353,31 @@
 
   // ---- round ------------------------------------------------------------
 
-  function reset() {
-    const { PS, KS } = MAPS[G.lm];
-    Object.assign(G, { t: 99000, rush: 0, bt: 4000, win: -1, wn: 99 });
-    G.B.splice(0).forEach((b) => b.s.destroy());
-    G.K.splice(6).forEach((k) => k.s.destroy());
-    const cs = sh(KC.slice());
-    G.K.forEach((k, i) => {
+  // Shuts the six chests and brings the six real keys back with new colours and a new pairing.
+  function deal() {
+    const KS = MAPS[G.lm].KS, cs = sh(KC.slice()), ks = G.K.slice(0, 6);
+    G.wd = 0;
+    ks.forEach((k, i) => {
       const [x, y] = [KS[i][0] * T + T / 2, HB + KS[i][1] * T - 8];
+      if (k.own) k.own.k = null;
       Object.assign(k, { live: true, own: null, c: cs[i] });
       k.s.setVisible(true).setFrame(KC.indexOf(k.c));
       k.s.body.enable = true;
       k.s.body.reset(x, y);
     });
-    const ks = sh(G.K.slice());
+    sh(ks);
     G.C.forEach((c, i) => {
       Object.assign(c, { st: 0, k: ks[i], m: [], by: -1, ri: 0, rt: 0, life: 0, x: 1, r: REEL, lk: 0 });
       c.b.body.enable = false;
     });
+  }
+
+  function reset() {
+    const { PS } = MAPS[G.lm];
+    Object.assign(G, { t: 99000, rush: 0, bt: 4000, win: -1, wn: 99, wv: 1 });
+    G.B.splice(0).forEach((b) => b.s.destroy());
+    G.K.splice(6).forEach((k) => k.s.destroy());
+    deal();
     G.P.forEach((p, i) => {
       Object.assign(p, { sc: 0, sk: 0, k: null, pw: null, slow: 0, stun: 0, inv: 0, np: 0, fast: 0, dz: 0, luck: 0, rf: 0, cy: 0, jb: 0, cj: 0, vy: 0 });
       const x = PS[i][0] * T + T / 2, y = HB + PS[i][1] * T;
@@ -465,8 +472,8 @@
     G.C.forEach((c, i) => hud.ch[i].setFrame(c.st ? 1 : 0).setTint(c.st ? PC[c.by] : 0xffffff));
     G.P.forEach((p, i) => {
       set(hud.sc[i], '' + p.sc);
-      set(hud.sk[i], p.sk ? 'RACHA X' + Math.min(p.sk + 1, 3) : '');
-      hud.ki[i].setVisible(!!p.k);
+      set(hud.sk[i], p.sk ? 'PRÓXIMO COFRE X' + Math.min(p.sk + 1, 3) : '');
+      hud.ki[i].setVisible(!!p.k && G.ph != 'end');
       if (p.k) hud.ki[i].setFrame(p.k.s.frame.name);
       const w = PW.find((w) => w.id == p.pw);
       hud.pi[i].setVisible(!!w);
@@ -639,7 +646,16 @@
         stomp(G.P[1], G.P[0]);
         G.P.forEach((p) => G.C.forEach((c) => poke(p, c)));
         view();
-        if (G.t <= 0 || G.C.every((c) => c.st == 2)) go('end');
+        if (G.t <= 0) return go('end');
+        // The next wave comes 1.2 s after the sixth chest pays, or after 10 s with one chest left shut,
+        // so nobody can stall the match by sitting on the last key.
+        const paid = G.C.filter((c) => c.st == 2).length, lim = paid > 5 ? 1200 : paid > 4 && G.C.some((c) => !c.st) ? 10000 : 0;
+        G.wd = lim ? G.wd + dt : 0;
+        if (lim && G.wd >= lim) {
+          G.wv++;
+          deal();
+          fx('wave', W / 2, H / 2, G.wv);
+        }
       },
     },
     pause: {
@@ -654,6 +670,7 @@
         G.mi = (G.mi + 1) % MAPS.length;
         G.t = Math.max(G.t, 0);
         G.C.forEach((c) => c.st == 1 && settle(c));
+        G.P.forEach((p) => Object.assign(p, { pw: null, sk: 0, slow: 0, fast: 0, dz: 0, luck: 0 }));
         const [a, b] = [G.P[0].sc, G.P[1].sc];
         G.win = a == b ? -1 : a > b ? 0 : 1;
         G.et = 0;
@@ -855,13 +872,14 @@
       ['box', 0, 'LAS CAJAS DAN POWERUPS. BOTÓN 2 LOS USA'],
       ['p1', 5, 'PISA AL RIVAL PARA QUE SUELTE SU LLAVE'],
     ].forEach(([k, f, s], i) => {
-      c.add(S.add.image(96, 90 + i * 36, k, f));
-      L(c, 132, 90 + i * 36, s, 2, 0xffffff, 0);
+      c.add(S.add.image(96, 86 + i * 35, k, f));
+      L(c, 132, 86 + i * 35, s, 2, 0xffffff, 0);
     });
-    L(c, 400, 344, 'RACHA: ABRE COFRES SEGUIDOS Y VALEN X2 Y X3', 2, 0xffd23f);
-    L(c, 400, 378, 'POWERUPS', 2, 0x8a84b8);
+    L(c, 400, 336, 'RACHA: CADA COFRE SEGUIDO VALE MÁS, X2 Y LUEGO X3', 2, 0xffd23f);
+    L(c, 400, 360, 'AL ABRIR LOS SEIS LLEGA OTRA OLEADA. GANA QUIEN SUME MÁS', 2, 0xffd23f);
+    L(c, 400, 388, 'POWERUPS', 2, 0x8a84b8);
     PW.forEach((w, i) => {
-      const x = 76 + (i % 2) * 348, y = 406 + ((i / 2) | 0) * 26;
+      const x = 76 + (i % 2) * 348, y = 412 + ((i / 2) | 0) * 26;
       c.add(S.add.image(x, y, 'ic', w.f));
       L(c, x + 18, y, w.n + ': ' + w.d, 2, 0xffffff, 0);
     });
@@ -1439,6 +1457,7 @@
     quake: [[4, 220, 0, 650, 14], [1, 90, 40, 550, 11]],
     pit: [[2, 900, 150, 260, 9], [2, 300, 620, 110, 9, 260]],
     map: [[2, 523, 523, 90, 9], [2, 784, 784, 240, 9, 90]],
+    wave: [[2, 523, 523, 80, 11], [2, 659, 659, 80, 11, 80], [2, 784, 784, 80, 11, 160], [2, 1047, 1047, 260, 11, 240]],
   };
 
   function tone(w, f0, f1, ms, vol, at, out) {
@@ -1531,6 +1550,7 @@
     quake: (s) => s.cameras.main.shake(520, 0.016),
     pit: (s, x, y, a) => (squash(s, a, 0.7, 1.3), burst(x, y, 10, 0xffffff)),
     map: (s, x, y, a) => pop(s, x, 190, MAPS[a].n, 5, 0xffd23f, 1700),
+    wave: (s, x, y, a) => (pop(s, x, 190, '¡OLEADA ' + a + '!', 5, 0xffd23f, 1500), s.cameras.main.flash(160, 255, 220, 90)),
     step: (s, x, y) => burst(x, y, 1, 0x8a93b8),
     fizz: (s, x, y) => (pop(s, x, y - 40, 'NADA...', 2, 0xb9bccb), burst(x, y - 20, 6, 0xb9bccb)),
     stomp: (s, x, y) => (burst(x, y - 34, 12, 0xffffff), s.cameras.main.shake(120, 0.006)),
