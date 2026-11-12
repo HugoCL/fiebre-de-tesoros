@@ -11,7 +11,7 @@
   // surface cells where players, keys and powerup boxes appear, and tc the light sources in pixels.
   const MAPS = [
     {
-      n: 'TEMPLO', th: 0, hz: { n: 'DARDOS', d: 'CRUZAN LA SALA Y ATURDEN' },
+      n: 'RAPA NUI', th: 0, hz: { n: 'PUKAOS', d: 'RUEDAN POR LA ISLA Y ATURDEN' },
       L: [
         '.........................',
         '.........................',
@@ -37,7 +37,7 @@
       tc: [[400, 276], [176, 424], [624, 424]],
     },
     {
-      n: 'CAVERNA', th: 1, hz: { n: 'ESTALACTITAS', d: 'CAEN DEL TECHO Y ATURDEN' },
+      n: 'TORRES DEL PAINE', th: 1, hz: { n: 'HIELO', d: 'SE DESPRENDE Y CAE. ¡CUIDADO!' },
       L: [
         '.........................',
         '.........................',
@@ -63,7 +63,7 @@
       tc: [[400, 150], [288, 330], [512, 330]],
     },
     {
-      n: 'VOLCÁN', th: 2, hz: { n: 'ERUPCIONES', d: 'EL SUELO ESTALLA Y LLUEVE FUEGO' },
+      n: 'VILLARRICA', th: 2, hz: { n: 'ERUPCIONES', d: 'EL SUELO ESTALLA Y LLUEVE FUEGO' },
       L: [
         '.........................',
         '.........................',
@@ -92,8 +92,8 @@
   // Hazard frequency: label and multiplier on the spawn interval (0 is off).
   const DF = [['APAGADOS', 0], ['POCOS', 1.6], ['NORMALES', 1], ['MUCHOS', 0.55]];
   // One hazard per map: kind and base ms between spawns. Tune the rhythm here.
-  const HZ = [['dart', 5000], ['rock', 4500], ['erupt', 6000]];
-  // v2 holds one top 8 per DF row. v1 is only read, once, and its scores go to APAGADOS.
+  const HZ = [['roll', 5000], ['ice', 4500], ['erupt', 6000]];
+  // v2 holds one top 8 per mode and DF row. v1 is only read, once, and its scores go to APAGADOS.
   const SK = 'fiebre-de-tesoros.scores.v2', SK1 = 'fiebre-de-tesoros.scores.v1';
   const ABC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
@@ -125,13 +125,13 @@
   const KA = {};
   for (const [a, ks] of Object.entries(CABINET_KEYS)) for (const k of ks) KA[k.toLowerCase()] = a;
 
-  const G = { ph: '', t: 0, wv: 1, wd: 0, mi: 0, lm: -1, P: [], K: [], C: [], B: [], lb: [[], [], [], []], rl: 0, win: -1, df: 2,
-    // The ranking of the level selected on the title. Ranking screens look at lb[rl] instead.
-    get hs() { return G.lb[G.df]; },
-    set hs(v) { G.lb[G.df] = v; },
+  const G = { ph: '', t: 0, wv: 1, wd: 0, mi: 0, lm: -1, P: [], K: [], C: [], B: [], lb: Array.from({ length: 8 }, () => []), rl: 0, so: 0, win: -1, df: 2,
+    // The ranking of the mode and level selected on the title (mode * 4 + level). Ranking screens look at lb[rl] instead.
+    get hs() { return G.lb[G.so * 4 + G.df]; },
+    set hs(v) { G.lb[G.so * 4 + G.df] = v; },
     H: [], ht: 6000, sp: (k, x, y) => addH(k, x, y) };
   const held = {}, pressed = {};
-  const UI = {}, U = {}, hud = { sc: [], sk: [], ki: [], pi: [], pn: [], ch: [], st: [] };
+  const UI = {}, U = {}, hud = { sc: [], sk: [], ki: [], pi: [], pn: [], ch: [], st: [], o: [[], []] };
   const nm = { l: [], i: 0 };
   let S, gfx, kg, sg, pg, cur = 0;
 
@@ -258,7 +258,7 @@
   // ---- powerups ---------------------------------------------------------
 
   const PW = [
-    { id: 'slow', n: 'TORTUGA', d: 'RIVAL LENTO', f: 0, w: 14, wl: 12, use(p, r) { r.slow = 4500; fx('slow', r.s.x, r.s.y, p.i); } },
+    { id: 'slow', r: 1, n: 'TORTUGA', d: 'RIVAL LENTO', f: 0, w: 14, wl: 12, use(p, r) { r.slow = 4500; fx('slow', r.s.x, r.s.y, p.i); } },
     {
       id: 'master', n: 'LLAVE MAESTRA', d: 'ABRE TODO', f: 1, w: 6, wl: 14,
       use(p) {
@@ -277,7 +277,7 @@
       },
     },
     {
-      id: 'grab', n: 'IMÁN', d: 'ROBA LA LLAVE', f: 3, w: 10, wl: 12,
+      id: 'grab', r: 1, n: 'IMÁN', d: 'ROBA LA LLAVE', f: 3, w: 10, wl: 12,
       use(p, r) {
         const k = r.k || (!p.k && G.K.filter((k) => k.live && !k.own).sort((a, b) => dist(a.s, p.s) - dist(b.s, p.s))[0]);
         if (!k) return fx('fizz', p.s.x, p.s.y, p.i);
@@ -298,16 +298,16 @@
     { id: 'fast', n: 'AJÍ', d: 'CORRES MÁS', f: 5, w: 14, wl: 10, use(p) { p.slow = 0; p.fast = 5000; fx('fast', p.s.x, p.s.y, p.i); } },
     { id: 'luck', n: 'TRÉBOL', d: 'MEJORES PREMIOS', f: 6, w: 8, wl: 12, use(p) { p.luck = 1; fx('luck', p.s.x, p.s.y, p.i); } },
     {
-      id: 'cut', n: 'TIJERAS', d: 'CORTA LA RACHA', f: 7, w: 4, wl: 12,
+      id: 'cut', r: 1, n: 'TIJERAS', d: 'CORTA LA RACHA', f: 7, w: 4, wl: 12,
       use(p, r) {
         if (!r.sk) return fx('fizz', p.s.x, p.s.y, p.i);
         r.sk = 0;
         fx('cut', r.s.x, r.s.y, p.i);
       },
     },
-    { id: 'dizzy', n: 'MAREO', d: 'RIVAL AL REVÉS', f: 8, w: 12, wl: 8, use(p, r) { r.dz = 4000; fx('dizzy', r.s.x, r.s.y, p.i); } },
+    { id: 'dizzy', r: 1, n: 'MAREO', d: 'RIVAL AL REVÉS', f: 8, w: 12, wl: 8, use(p, r) { r.dz = 4000; fx('dizzy', r.s.x, r.s.y, p.i); } },
     {
-      id: 'trade', n: 'CAMBIAZO', d: 'CAMBIA DE LUGAR', f: 9, w: 6, wl: 4,
+      id: 'trade', r: 1, n: 'CAMBIAZO', d: 'CAMBIA DE LUGAR', f: 9, w: 6, wl: 4,
       use(p, r) {
         const [a, b] = [p.s.body, r.s.body], [x, y, rx, ry] = [p.s.x, p.s.y, r.s.x, r.s.y];
         a.reset(rx, ry);
@@ -323,18 +323,21 @@
           k.s.body.setVelocity((Math.random() * 2 - 1) * 200, -420);
         });
         const b = r.s.body;
-        if (b.blocked.down || b.touching.down) hurt(r, 0, 0);
+        if (!G.so && (b.blocked.down || b.touching.down)) hurt(r, 0, 0);
         fx('quake', p.s.x, p.s.y, p.i);
       },
     },
   ];
+  // In solo player 2 is absent: hidden, without a body, never read, targeted or hurt.
+  const here = (p) => !G.so || !p.i;
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
+  // Solo has no rival, so the powerups that only act on one are left out and nobody trails.
   function roll(p) {
-    const lose = G.P[1 - p.i].sc - p.sc >= 300, w = (r) => (lose ? r.wl : r.w);
-    let x = Math.random() * PW.reduce((a, r) => a + w(r), 0);
-    for (const r of PW) if ((x -= w(r)) < 0) return r.id;
-    return PW[0].id;
+    const lose = !G.so && G.P[1 - p.i].sc - p.sc >= 300, w = (r) => (lose ? r.wl : r.w), pool = PW.filter((r) => !(G.so && r.r));
+    let x = Math.random() * pool.reduce((a, r) => a + w(r), 0);
+    for (const r of pool) if ((x -= w(r)) < 0) return r.id;
+    return pool[0].id;
   }
 
   function act(p) {
@@ -389,6 +392,8 @@
       const x = PS[i][0] * T + T / 2, y = HB + PS[i][1] * T;
       p.s.setPosition(x, y).setFlipX(i == 1).setAlpha(1);
       p.s.body.reset(x, y);
+      p.s.setVisible(here(p));
+      p.s.body.enable = here(p);
     });
     view();
   }
@@ -500,6 +505,7 @@
       const f = p.dz > 0 ? 8 : p.slow > 0 ? 0 : p.fast > 0 ? 5 : p.luck ? 6 : -1;
       hud.st[i].setVisible(f >= 0).setFrame(Math.max(f, 0)).setPosition(p.s.x, p.s.y - (p.k ? 74 : 56));
     });
+    hud.o[1].forEach((o) => o.setVisible(!G.so));
     hzView();
   }
 
@@ -553,10 +559,18 @@
 
   // ---- hazards ----------------------------------------------------------
   // Plain data driven from tick(), so pause, end and the title freeze them. Each one warns (w ms) and then acts.
-  // dart: x, y, d (direction). rock: x, y, vy, fy (landing height). erupt: x, y (surface), x0, x1. fire: x, y, vx, vy.
+  // roll: x, y, d, vx, vy, a (spin), sy (surface it rolls on, 0 in the air). ice: x, y, vy, fy (landing height).
+  // erupt: x, y (surface), x0, x1. fire: x, y, vx, vy.
 
   const solid = (ch) => ch == '#' || ch == '=';
   const rowY = (r) => HB + r * T;
+  // The level continues one mirrored column past each side, so off screen counts as the edge column.
+  const colOf = (x) => Math.min(24, Math.max(0, (x / T) | 0));
+  // Is there a surface at exactly height y under x?
+  const onSurf = (x, y) => {
+    const r = Math.round((y - HB) / T);
+    return solid((MAPS[G.lm].L[r] || '')[colOf(x)]) && rowY(r) == y;
+  };
 
   // The first solid cell of a column at or below y: its surface height, or Infinity over a pit.
   function floorAt(c, y) {
@@ -580,10 +594,12 @@
   function addH(k, x, y) {
     const h = { k, x, y, w: k == 'erupt' ? 1200 : k == 'fire' ? 0 : 1000, s: null };
     if (k == 'fire') Object.assign(h, { vx: 0, vy: 0 });
-    if (k == 'dart') {
+    if (k == 'roll') {
+      // x only picks the side and y is the surface it enters on. A row without floor at the edge drops it to the one below.
       h.d = x < W / 2 ? 1 : -1;
-      h.x = h.d > 0 ? -16 : W + 16;
-    } else if (k == 'rock') {
+      Object.assign(h, { x: h.d > 0 ? -16 : W + 16, y: y - 14, vx: h.d * 260, vy: 0, a: 0, sy: 0 });
+      if (onSurf(h.x, y)) h.sy = y;
+    } else if (k == 'ice') {
       h.x = Phaser.Math.Clamp(x, 16, W - 16);
       h.y = HB + 14;
       h.vy = 0;
@@ -593,31 +609,31 @@
       Object.assign(h, { x: c * T + T / 2, y: sy, x0: (c - 1) * T, x1: (c + 2) * T });
     }
     if (k != 'erupt') {
-      h.s = S.add.image(h.x, h.y, 'hz', ['dart', 'rock', 'fire'].indexOf(k)).setDepth(5).setVisible(k == 'fire');
-      if (h.d < 0) h.s.setFlipX(true);
+      h.s = S.add.image(h.x, h.y, 'hz', ['roll', 'ice', 'fire'].indexOf(k)).setDepth(5).setVisible(k == 'fire');
     }
     G.H.push(h);
-    if (k != 'fire') fx('hzw', k == 'dart' ? (h.d > 0 ? 0 : W) : h.x, h.y, k);
+    if (k != 'fire') fx('hzw', k == 'roll' ? (h.d > 0 ? 0 : W) : h.x, h.y, k);
     return h;
   }
 
+  // 60 % of the time at where a random player stands, otherwise anywhere. Solo only ever aims at player 1.
   function aim() {
-    const k = HZ[G.lm][0], r = Math.random, p = G.P[(r() * 2) | 0], b = p.s.body;
-    const rows = MAPS[G.lm].L.map((row, i) => (row.includes('#') || row.includes('=') ? rowY(i) : 0)).filter((y) => y);
-    const ry = rows[(r() * rows.length) | 0], dart = k == 'dart';
-    if (r() < 0.6) addH(k, dart ? (r() < 0.5 ? 0 : W) : p.s.x, dart ? b.center.y : b.bottom);
-    else addH(k, dart ? (r() < 0.5 ? 0 : W) : 40 + r() * (W - 80), ry - (dart ? 17 : 0));
+    const k = HZ[G.lm][0], r = Math.random, p = G.P[G.so ? 0 : (r() * 2) | 0], b = p.s.body, at = r() < 0.6;
+    const rows = MAPS[G.lm].L.map((row, i) => (/[#=]/.test(row) ? rowY(i) : 0)).filter((y) => y);
+    const ry = rows[(r() * rows.length) | 0], near = rows.reduce((a, y) => (Math.abs(y - b.bottom) < Math.abs(a - b.bottom) ? y : a));
+    if (k == 'roll') addH(k, r() < 0.5 ? 0 : W, at ? near : ry);
+    else addH(k, at ? p.s.x : 40 + r() * (W - 80), at ? b.bottom : ry);
   }
 
   function hit(h, w, hh, kx) {
-    const p = G.P.find((p) => ov(p.s.body, h.x, h.y, w, hh) && hurt(p, kx, 0));
+    const p = G.P.find((p) => here(p) && ov(p.s.body, h.x, h.y, w, hh) && hurt(p, kx, 0));
     if (p) fx('hzhit', h.x, h.y, p.s);
     return !!p;
   }
 
   // Did a body whose bottom went from pb to nb land on a surface? Returns the surface height.
   function lands(x, pb, nb) {
-    const L = MAPS[G.lm].L, c = (x / T) | 0;
+    const L = MAPS[G.lm].L, c = colOf(x);
     for (let r = Math.max(0, Math.floor((pb - HB) / T)); r <= Math.min(L.length - 1, Math.floor((nb - HB) / T)); r++) {
       const ch = L[r][c], y = rowY(r);
       if (nb >= y && (ch == '#' || (ch == '=' && pb <= y + 8))) return y;
@@ -628,14 +644,24 @@
   // Returns true when the hazard is done.
   function stepH(h, dt) {
     const s = dt / 1000;
-    if (h.k == 'dart') {
-      h.x += h.d * 520 * s;
-      return h.x < -24 || h.x > W + 24 || hit(h, 28, 10, h.d * 260);
+    if (h.k == 'roll') {
+      h.x += h.vx * s;
+      h.a += (h.vx * s) / 14;
+      if (h.sy && !onSurf(h.x, h.sy)) h.sy = 0;
+      if (!h.sy) {
+        const pb = h.y + 14;
+        h.vy += PH.g * s;
+        h.y += h.vy * s;
+        const ly = h.vy > 0 && lands(h.x, pb, h.y + 14);
+        if (ly) Object.assign(h, { sy: ly, y: ly - 14, vy: 0 });
+      }
+      hit(h, 28, 28, h.d * 260);
+      return h.x < -24 || h.x > W + 24 || h.y > H;
     }
-    if (h.k == 'rock') {
+    if (h.k == 'ice') {
       h.vy = Math.min(h.vy + PH.g * s, PH.fall);
       h.y += h.vy * s;
-      if (h.y + 12 >= h.fy) return fx('hzend', h.x, h.fy, 'rock'), true;
+      if (h.y + 12 >= h.fy) return fx('hzend', h.x, h.fy, 'ice'), true;
       return h.y > H || hit(h, 24, 24, 0);
     }
     const pb = h.y + 8;
@@ -649,7 +675,7 @@
 
   function erupt(h) {
     G.P.forEach((p) => {
-      if (p.s.x >= h.x0 && p.s.x <= h.x1 && Math.abs(p.s.body.bottom - h.y) <= 6 && hurt(p, (p.s.x < h.x ? -1 : 1) * 320, -720)) fx('hzhit', p.s.x, p.s.y, p.s);
+      if (here(p) && p.s.x >= h.x0 && p.s.x <= h.x1 && Math.abs(p.s.body.bottom - h.y) <= 6 && hurt(p, (p.s.x < h.x ? -1 : 1) * 320, -720)) fx('hzhit', p.s.x, p.s.y, p.s);
     });
     for (let i = 0; i < 3; i++) {
       const f = addH('fire', h.x, h.y - 8);
@@ -672,14 +698,14 @@
       if (h.w > 0) {
         h.w -= dt;
         if (h.w > 0) continue;
-        fx('hz', h.k == 'dart' ? (h.d > 0 ? 0 : W) : h.x, h.y, h.k);
+        fx('hz', h.k == 'roll' ? (h.d > 0 ? 0 : W) : h.x, h.y, h.k);
         if (h.k == 'erupt') erupt(h);
         else h.s.setVisible(true);
       }
       if (h.k == 'erupt' || stepH(h, dt)) {
         G.H.splice(i, 1);
         if (h.s) h.s.destroy();
-      } else h.s.setPosition(h.x, h.y);
+      } else h.s.setPosition(h.x, h.y).setRotation(h.a || 0);
     }
   }
 
@@ -689,34 +715,24 @@
     G.H.forEach((h) => {
       if (h.w <= 0) return;
       gfx.fillStyle(0xff5a4d, on ? 0.9 : 0.35);
-      if (h.k == 'dart') {
+      if (h.k == 'roll') {
         const x = h.d > 0 ? 0 : W;
         gfx.fillRect(Math.min(x, x + h.d * 20), h.y - 2, 20, 4).fillTriangle(x + h.d * 20, h.y - 12, x + h.d * 20, h.y + 12, x + h.d * 40, h.y);
-      } else if (h.k == 'rock') {
+      } else if (h.k == 'ice') {
         gfx.fillTriangle(h.x - 12, HB + 4, h.x + 12, HB + 4, h.x, HB + 22);
       } else gfx.fillRect(h.x0, h.y - 5, h.x1 - h.x0, 5);
     });
   }
 
-  // Placeholder art for the hz sheet (dart, rock, fireball). The KIT replaces it.
+  // Placeholder art for the hz sheet (pukao, ice, fireball). The KIT replaces it.
   function hzTmp() {
     const t = S.textures.createCanvas('hz', 96, 32), c = t.getContext();
-    c.fillStyle = '#b9bccb';
-    c.fillRect(2, 13, 20, 6);
-    c.fillStyle = '#ffffff';
-    c.fillRect(22, 10, 8, 12);
-    c.fillStyle = '#7c8ca3';
-    c.beginPath();
-    c.arc(48, 16, 12, 0, 7);
-    c.fill();
-    c.fillStyle = '#ff9a3c';
-    c.beginPath();
-    c.arc(80, 16, 10, 0, 7);
-    c.fill();
-    c.fillStyle = '#ffd23f';
-    c.beginPath();
-    c.arc(80, 16, 5, 0, 7);
-    c.fill();
+    [['#c93a3a', 16, 14], ['#8fe3ff', 48, 12], ['#ff9a3c', 80, 10], ['#ffd23f', 80, 5]].forEach(([col, x, r]) => {
+      c.fillStyle = col;
+      c.beginPath();
+      c.arc(x, 16, r, 0, 7);
+      c.fill();
+    });
     [0, 1, 2].forEach((i) => t.add(i, 0, i * 32, 0, 32, 32));
     t.refresh();
   }
@@ -740,10 +756,11 @@
     U.menu.forEach((t, i) => t.setTint(i == cur ? 0xffd23f : 0x8a84b8));
     const pick = (i, s) => (cur == i ? '< ' + s + ' >' : s);
     set(U.menu[0], 'JUGAR: ' + pick(0, MAPS[G.mi].n));
-    set(U.menu[1], 'PELIGROS: ' + pick(1, DF[G.df][0]));
+    set(U.menu[1], 'MODO: ' + pick(1, G.so ? 'SOLO' : 'DUELO'));
+    set(U.menu[2], 'PELIGROS: ' + pick(2, DF[G.df][0]));
     const hz = MAPS[G.mi].hz;
     set(U.hz, hz.n + ': ' + hz.d);
-    U.mc.setPosition(356 - U.menu[cur].width / 2, 300 + cur * 48);
+    U.mc.setPosition(356 - U.menu[cur].width / 2, 292 + cur * 40);
   }
 
   function rank() {
@@ -753,7 +770,7 @@
       r[1].setText(e ? e.n : '---').setTint(c);
       r[2].setText(e ? '' + e.s : '').setTint(c);
     });
-    set(U.rl, 'PELIGROS: < ' + DF[G.rl][0] + ' >');
+    set(U.rl, (G.rl > 3 ? 'SOLO' : 'DUELO') + ' - PELIGROS: < ' + DF[G.rl & 3][0] + ' >');
     const li = G.lb[G.rl].indexOf(G.last);
     U.rc.setVisible(li >= 0).setY(140 + li * 46);
   }
@@ -788,9 +805,14 @@
       },
       up(dt) {
         const n = nav();
-        if (n.y) { cur = (cur + n.y + 4) % 4; menu(); fx('move'); }
-        else if (n.x && cur == 1) {
+        if (n.y) { cur = (cur + n.y + 5) % 5; menu(); fx('move'); }
+        else if (n.x && cur == 2) {
           G.df = (G.df + n.x + DF.length) % DF.length;
+          menu();
+          fx('move');
+        } else if (n.x && cur == 1) {
+          G.so ^= 1;
+          reset();
           menu();
           fx('move');
         } else if (n.x && !cur) {
@@ -800,7 +822,7 @@
           menu();
           fx('move');
         }
-        if (ok()) { fx('ok'); return go(['ready', 'ready', 'rank', 'how'][cur]); }
+        if (ok()) { fx('ok'); return go(['ready', 'ready', 'ready', 'rank', 'how'][cur]); }
         G.id = any() ? 0 : G.id + dt;
         if (G.id > 12000) go('rank');
         set(U.best, G.hs[0] ? 'RÉCORD  ' + G.hs[0].n + '  ' + G.hs[0].s : '');
@@ -811,12 +833,13 @@
       up(dt) { G.id += dt; if ((G.id > 400 && ok()) || G.id > 20000) { fx('ok'); go('title'); } },
     },
     rank: {
-      in() { G.id = 0; G.rl = G.df; rank(); },
+      in() { G.id = 0; G.rl = G.so * 4 + G.df; rank(); },
       up(dt) {
         const n = nav();
         G.id += dt;
-        if (n.x) {
-          G.rl = (G.rl + n.x + DF.length) % DF.length;
+        if (n.x || n.y) {
+          // Left and right walk the levels of this mode, up and down switch the mode.
+          G.rl = n.y ? G.rl ^ 4 : (G.rl & 4) | (((G.rl & 3) + n.x + DF.length) % DF.length);
           G.id = Math.min(G.id, 601);
           rank();
           fx('move');
@@ -833,6 +856,7 @@
         music(S, 'off');
         const hz = MAPS[G.mi].hz;
         U.rh.setText(hz.n + ': ' + hz.d).setVisible(!!DF[G.df][1]);
+        U.pt[1].setVisible(!G.so);
         fx('map', W / 2, H / 2, G.mi);
       },
       up(dt) {
@@ -846,15 +870,17 @@
       up(dt) {
         if (pressed.START1 || pressed.START2) return go('pause');
         tick(dt);
-        G.P.forEach((p) => move(p, dt));
+        G.P.filter(here).forEach((p) => move(p, dt));
         G.K.forEach((k) => {
           if (k.own) k.s.setPosition(k.own.s.x, k.own.s.y - 52);
           else if (k.live) ring(k.s);
         });
-        G.P.forEach(grab);
-        stomp(G.P[0], G.P[1]);
-        stomp(G.P[1], G.P[0]);
-        G.P.forEach((p) => G.C.forEach((c) => poke(p, c)));
+        G.P.filter(here).forEach(grab);
+        if (!G.so) {
+          stomp(G.P[0], G.P[1]);
+          stomp(G.P[1], G.P[0]);
+        }
+        G.P.filter(here).forEach((p) => G.C.forEach((c) => poke(p, c)));
         view();
         if (G.t <= 0) return go('end');
         // The next wave comes 1.2 s after the sixth chest pays, or after 10 s with one chest left shut,
@@ -882,13 +908,14 @@
         G.C.forEach((c) => c.st == 1 && settle(c));
         G.P.forEach((p) => Object.assign(p, { pw: null, sk: 0, slow: 0, fast: 0, dz: 0, luck: 0, kx: 0 }));
         const [a, b] = [G.P[0].sc, G.P[1].sc];
-        G.win = a == b ? -1 : a > b ? 0 : 1;
+        // Solo has no winner and no tie: player 1 is the one who scores.
+        G.win = G.so || a > b ? 0 : a == b ? -1 : 1;
         G.et = 0;
         view();
-        fx('end', W / 2, H / 2, G.win);
-        U.ew.setText(G.win < 0 ? 'EMPATE' : 'GANA JUGADOR ' + (G.win + 1)).setTint(G.win < 0 ? 0xffd23f : PC[G.win]);
-        U.es[0].setText('JUGADOR 1: ' + a);
-        U.es[1].setText('JUGADOR 2: ' + b);
+        fx(G.so ? 'endsolo' : 'end', W / 2, H / 2, G.win);
+        U.ew.setText(G.so ? 'PUNTAJE: ' + a : G.win < 0 ? 'EMPATE' : 'GANA JUGADOR ' + (G.win + 1)).setTint(G.win < 0 ? 0xffd23f : PC[G.win]);
+        U.es[0].setText(G.so ? '' : 'JUGADOR 1: ' + a);
+        U.es[1].setText(G.so ? '' : 'JUGADOR 2: ' + b);
       },
       up(dt) {
         G.et += dt;
@@ -901,7 +928,7 @@
         nm.l = [];
         nm.i = 0;
         const col = G.win < 0 ? 0xffd23f : PC[G.win];
-        U.nh.setText(G.win < 0 ? 'EMPATE: INICIALES COMPARTIDAS' : 'JUGADOR ' + (G.win + 1) + ': ¡ENTRASTE AL RANKING!').setTint(col);
+        U.nh.setText(G.win < 0 ? 'EMPATE: INICIALES COMPARTIDAS' : (G.so ? '' : 'JUGADOR ' + (G.win + 1) + ': ') + '¡ENTRASTE AL RANKING!').setTint(col);
         U.cu.setFillStyle(col);
         G.id = 0;
         cell();
@@ -946,9 +973,9 @@
   async function load() {
     try {
       let v = await read(SK);
-      if (!Array.isArray(v) || v.length != DF.length || !v.every(Array.isArray)) {
+      if (!Array.isArray(v) || v.length != G.lb.length || !v.every(Array.isArray)) {
         v = await read(SK1);
-        v = DF.map((_, i) => (i || !Array.isArray(v) ? [] : v));
+        v = G.lb.map((_, i) => (i || !Array.isArray(v) ? [] : v));
       }
       v.forEach((l, i) => { G.lb[i] = G.lb[i].concat(l.filter(valid)).map((e) => ({ n: e.n, s: e.s })).sort((a, b) => b.s - a.s).slice(0, 8); });
       if (G.ph == 'rank') rank();
@@ -1056,13 +1083,15 @@
     for (let k = 0; k < 6; k++) hud.ch.push(S.add.image(W / 2 + (k - 2.5) * 22, 42, 'chest', 0).setScale(0.5).setDepth(8));
     [0, 1].forEach((i) => {
       const d = i ? -1 : 1, x = i ? W : 0;
-      hudTxt(x + d * 12, 17, 'P' + (i + 1), 2, PC[i], i);
+      hud.o[i].push(hudTxt(x + d * 12, 17, 'P' + (i + 1), 2, PC[i], i));
       hud.sc.push(hudTxt(x + d * 46, 17, '', 3, 0xffffff, i));
-      [[26, 32], [62, 22]].forEach(([o, w]) => S.add.rectangle(x + d * o, 41, w, 20, 0x1b1736).setStrokeStyle(1, 0x3a3566).setDepth(7));
+      hud.o[i].push(hud.sc[i]);
+      [[26, 32], [62, 22]].forEach(([o, w]) => hud.o[i].push(S.add.rectangle(x + d * o, 41, w, 20, 0x1b1736).setStrokeStyle(1, 0x3a3566).setDepth(7)));
       hud.ki.push(S.add.image(x + d * 26, 41, 'key', 0).setDepth(8));
       hud.pi.push(S.add.image(x + d * 62, 41, 'ic', 0).setDepth(8));
       hud.pn.push(hudTxt(x + d * 80, 41, '', 2, PC[i], i));
       hud.sk.push(hudTxt(x + d * 150, 17, '', 2, 0xffd23f, i));
+      hud.o[i].push(hud.pn[i], hud.sk[i]);
       hud.st.push(S.add.image(0, 0, 'ic', 0).setDepth(6));
     });
   }
@@ -1072,11 +1101,11 @@
     deco(S, c);
     big(c, 96, 'FIEBRE DE', 6);
     big(c, 172, 'TESOROS', 10);
-    U.hz = L(c, 400, 252, '', 2, 0xff9a3c);
-    U.menu = ['JUGAR', 'PELIGROS', 'RANKING', 'CÓMO JUGAR'].map((s, i) => L(c, 400, 300 + i * 48, s, 3));
+    U.hz = L(c, 400, 266, '', 2, 0xff9a3c);
+    U.menu = ['JUGAR', 'MODO', 'PELIGROS', 'RANKING', 'CÓMO JUGAR'].map((s, i) => L(c, 400, 292 + i * 40, s, 3));
     U.mc = S.add.image(0, 0, 'key', 6).setScale(2);
     c.add(U.mc);
-    U.best = L(c, 400, 474, '', 2, 0xffffff);
+    U.best = L(c, 400, 510, '', 2, 0xffffff);
     L(c, 400, 572, 'PALANCA: ELEGIR Y CAMBIAR. BOTÓN 1: CONFIRMAR', 2, 0x8a84b8);
 
     c = mkUI('how', 0.93);
@@ -1109,7 +1138,7 @@
     U.rc = S.add.image(190, 0, 'key', 6).setScale(2);
     c.add(U.rc);
     U.rk = [...Array(8).keys()].map((i) => [L(c, 230, 140 + i * 46, '', 3, 0xffffff, 0), L(c, 330, 140 + i * 46, '', 3, 0xffffff, 0), L(c, 570, 140 + i * 46, '', 3, 0xffffff, 1)]);
-    L(c, 400, 572, 'PALANCA: CAMBIAR NIVEL. BOTÓN PARA VOLVER', 2, 0x8a84b8);
+    L(c, 400, 572, 'PALANCA: CAMBIAR NIVEL Y MODO. BOTÓN: VOLVER', 2, 0x8a84b8);
 
     c = mkUI('ready', 0);
     U.cd = L(c, 400, 300, '', 12, 0xffd23f);
