@@ -827,6 +827,7 @@
 
   function screens() {
     let c = mkUI('title', 0.72);
+    deco(S, c);
     big(c, 96, 'FIEBRE DE', 6);
     big(c, 172, 'TESOROS', 10);
     U.menu = ['JUGAR', 'RANKING', 'CÓMO JUGAR'].map((s, i) => L(c, 400, 300 + i * 48, s, 3));
@@ -901,9 +902,9 @@
   }
 
   // ==== KIT ====
-  const FC = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,:!¡?¿-+/' ÁÉÍÓÚÑ";
+  const FC = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,:!¡?¿-+/'<> ÁÉÍÓÚÑ";
   const FD =
-    'ehhvhhhuhhuhhuehgggheuhhhhhuvgguggvvggugggehgnhhehhhvhhhe44444e72222ichikokihggggggvhrllhhhhpljhhhehhhhheuhhugggehhhliduhhukihfgge11uv444444hhhhhhehhhhha4hhhllrhhha4ahhhha4444v1248gvehjlphe4c4444eeh1248vu11e11u26aiv22vgu11heegguhhev124444ehhehheehhf11e00000cc0000c480cc0cc044444044044444eh124044048ghe000v000044v44011248gg4480000';
+    'ehhvhhhuhhuhhuehgggheuhhhhhuvgguggvvggugggehgnhhehhhvhhhe44444e72222ichikokihggggggvhrllhhhhpljhhhehhhhheuhhugggehhhliduhhukihfgge11uv444444hhhhhhehhhhha4hhhllrhhha4ahhhha4444v1248gvehjlphe4c4444eeh1248vu11e11u26aiv22vgu11heegguhhev124444ehhehheehhf11e00000cc0000c480cc0cc044444044044444eh124044048ghe000v000044v44011248gg4480000248g842g84248g';
 
   const PAL = {
     o: '#1b1326',
@@ -930,6 +931,9 @@
     r: '#ff5a4d',
     R: '#c93a3a',
     n: '#ff9a3c',
+    i: '#8fe3ff',
+    y: '#e1ff00',
+    p: '#ff6ec7',
   };
 
   const P_TOP =
@@ -1014,7 +1018,16 @@
     '........' + '.ggg....' + 'gg.gg...' + 'g...gggg' + 'gg.gg.gg' + '.ggg..g.' + '........' + '........',
     '........' + '....n...' + 'nnnnnn..' + '....n...' + '...n....' + '..nnnnnn' + '...n....' + '........',
     '........' + 'ww....ww' + 'ww....ww' + 'rr....rr' + 'rr....rr' + 'rrr..rrr' + '.rrrrrr.' + '..rrrr..',
+    '.lll....' + 'liiwl...' + 'liiil...' + 'liiil...' + '.lllW...' + '....WW..' + '.....WW.' + '......W.',
+    '......t.' + '.....tT.' + '...rrr..' + '..rrrr..' + '.rrrR...' + 'rrrR....' + 'rrR.....' + 'R.......',
+    '.tt.tt..' + 'tttTttt.' + 'tttTttt.' + '.TTTTT..' + 'tttTttt.' + 'tttTttt.' + '.tt.tT..' + '.....T..',
+    'l.....l.' + '.l...l..' + '..l.l...' + '...l....' + '..r.r...' + '.rr.rr..' + 'r.r.r.r.' + '.rr.rr..',
+    '.uuuuu..' + 'u.....u.' + 'u.uuu.u.' + 'u.u.u.u.' + 'u.u...u.' + 'u.uuuuu.' + 'u.......' + '.uuuuuu.',
+    '..y.....' + '.yyy....' + 'yyyyy...' + '..y..p..' + '..y..p..' + '...ppppp' + '....ppp.' + '.....p..',
+    'aaanaaaa' + 'aaanaaaa' + 'aannaaaa' + 'SSnSSSSS' + 'SSnnSSSS' + 'SSSnSSSS' + 'SSSnnSSS' + 'SSSSnSSS',
   ];
+  const CROWN = 'g...g...g' + 'gg.ggg.gg' + 'ggggggggg' + 'gwggrggwg' + 'GGGGGGGGG';
+  const COIN = '.gggg.' + 'gwgggG' + 'gwgggG' + 'gggggG' + 'gggggG' + '.GGGG.';
 
   const TILE =
     'mmmmmmmmmmmmmmmm' +
@@ -1050,6 +1063,9 @@
     '..kkkkkkkkkkkkkk';
 
   const BN = [];
+  const LT = [];
+  let BGI;
+  let CN;
   let AC;
   let SG;
   let MG;
@@ -1107,17 +1123,19 @@
     }, 2);
     sheet(scene, 'box', 12, 12, [BOX, BOX.replace(/v/g, 'u')], PAL, 2);
     sheet(scene, 'ic', 8, 8, IC, PAL, 2);
-    sheet(scene, 'tile', 16, 16, [TILE, TILE, TILE], PAL, 2);
-    sheet(scene, 'plat', 16, 6, [0, 1, 2].flatMap(() => [PL_END, PL_MID, flip(PL_END, 16)]), PAL, 2);
+    sheet(scene, 'tile', 16, 16, [TILE, TILE, TILE], (i) => ({ ...PAL, ...TH[i].p }), 2);
+    sheet(scene, 'plat', 16, 6, [0, 1, 2].flatMap(() => [PL_END, PL_MID, flip(PL_END, 16)]), (i) => ({ ...PAL, ...TH[(i / 3) | 0].p }), 2);
     sheet(scene, 'px', 1, 1, ['w'], PAL, 4);
+    sheet(scene, 'coin', 6, 6, [COIN], PAL, 2);
+    sheet(scene, 'crown', 9, 5, [CROWN], PAL, 2);
 
-    const cols = 27;
+    const cols = 28;
     const ft = scene.textures.createCanvas('font', cols * 6, 20);
     const fc = ft.getContext();
     [1, 0].forEach((sh) => {
       fc.fillStyle = sh ? PAL.o : '#fff';
       for (let g = 0; g < FC.length; g++) {
-        const acc = g - 48;
+        const acc = g - 50;
         const src = acc < 0 ? g : FC.indexOf('AEIOUN'[acc]);
         const dot = (x, y) => fc.fillRect((g % cols) * 6 + x + sh, ((g / cols) | 0) * 10 + y + sh, 1, 1);
         for (let r = 0; r < 7; r++) {
@@ -1144,6 +1162,15 @@
         emitting: false,
       })
       .setDepth(5);
+    CN = scene.add
+      .particles(0, 0, 'coin', {
+        speed: { min: 140, max: 330 },
+        angle: { min: 235, max: 305 },
+        lifespan: { min: 500, max: 900 },
+        gravityY: 900,
+        emitting: false,
+      })
+      .setDepth(11);
   }
 
   function txt(scene, x, y, str, size, tint) {
@@ -1151,52 +1178,146 @@
     return tint === undefined ? t : t.setTint(tint);
   }
 
-  const TORCH = [[400, 276], [176, 424], [624, 424]];
+  // Title dressing: the six keys, both players running in place and a chest that spits coins.
+  function deco(scene, c) {
+    const add = (x, y, k, f, z) => {
+      const o = scene.add.image(x, y, k, f).setScale(z);
+      c.add(o);
+      return o;
+    };
+    KC.forEach((_, i) =>
+      scene.tweens.add({ targets: add(260 + i * 56, 242, 'key', i, 2), y: 234, duration: 600, delay: i * 120, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' }),
+    );
+    const run = [add(110, 470, 'p0', 1, 3).setOrigin(0.5, 1), add(690, 470, 'p1', 1, 3).setOrigin(0.5, 1).setFlipX(true)];
+    add(400, 524, 'chest', 1, 2);
+    let n = 0;
+    scene.time.addEvent({
+      delay: 130,
+      loop: true,
+      callback: () => {
+        if (!c.visible) return;
+        n++;
+        run.forEach((o) => o.setFrame(1 + (n & 1)));
+        if (n % 6 == 0) CN.explode(1, 400, 512);
+      },
+    });
+  }
 
-  function bg(scene, m) {
-    if (scene.textures.exists('bg')) return;
-    const t = scene.textures.createCanvas('bg', 800, 600);
+  // Per theme: tile palette, sky stops, light glow as rgb, flame colours and the ambient particles
+  // [y min, y max, vy min, vy max, lifespan, frequency, tints].
+  const TH = [
+    { p: {}, sky: ['#141033', '#1d1b4b', '#0d2a3a'], gl: '255,170,60', fl: [0xffb13d, 0xfff2a8], am: [90, 560, -10, 10, 4200, 300, [0xd8ff7a, 0xffd23f]] },
+    {
+      p: { m: '#f4fbff', M: '#a9d8f5', a: '#8fb4e6', S: '#5574b5', k: '#263a6b' },
+      sky: ['#06142e', '#0f2f5e', '#123a5a'], gl: '90,200,255', fl: [0x6fe0ff, 0xe8fbff], am: [56, 56, 30, 70, 9000, 110, [0xffffff, 0xbfe6ff]],
+    },
+    {
+      p: { m: '#ffb13d', M: '#e2542b', a: '#8d6f7c', S: '#59404f', k: '#261722' },
+      sky: ['#16060f', '#3b0f1c', '#6b1f12'], gl: '255,110,40', fl: [0xff7a2e, 0xffe08a], am: [600, 600, -110, -40, 5200, 90, [0xff9a3c, 0xff5a4d, 0xffd23f]],
+    },
+  ];
+
+  function paint(scene, key, m, th) {
+    const t = scene.textures.createCanvas(key, 800, 600);
     const c = t.getContext();
     const grad = c.createLinearGradient(0, 0, 0, 600);
-    grad.addColorStop(0, '#141033');
-    grad.addColorStop(0.55, '#1d1b4b');
-    grad.addColorStop(1, '#0d2a3a');
+    th.sky.forEach((s, i) => grad.addColorStop(i / 2, s));
     c.fillStyle = grad;
     c.fillRect(0, 0, 800, 600);
 
-    let seed = 7;
+    let seed = 7 + m.th;
     const rnd = () => ((seed = (seed * 16807) % 2147483647) % 1000) / 1000;
-    for (let y = 56; y < 600; y += 16) {
-      for (let x = (y / 16) % 2 ? -16 : 0; x < 800; x += 32) {
-        const r = rnd();
-        c.fillStyle = r > 0.86 ? 'rgba(120,130,220,.13)' : r < 0.1 ? 'rgba(0,0,0,.22)' : 'rgba(0,0,0,.08)';
-        c.fillRect(x + 1, y + 1, 30, 14);
+    const each = (n, f) => { for (let i = 0; i < n; i++) f(rnd(), rnd(), rnd()); };
+    // Stepped triangle on a 4 px grid: base centred on x at y, tip h px away (negative h points up).
+    const tri = (x, y, w, h) => {
+      const n = Math.abs(h) / 4;
+      for (let j = 0; j < n; j++) {
+        const k = (w * (1 - j / n)) & ~3;
+        c.fillRect((x & ~3) - k, h > 0 ? y + j * 4 : y - j * 4 - 4, k * 2 + 4, 4);
       }
+    };
+    const glow = (x, y, r, a) => {
+      const g = c.createRadialGradient(x, y, 4, x, y, r);
+      g.addColorStop(0, 'rgba(' + th.gl + ',' + a + ')');
+      g.addColorStop(1, 'rgba(' + th.gl + ',0)');
+      c.fillStyle = g;
+      c.fillRect(x - r, y - r, r * 2, r * 2);
+    };
+
+    if (!m.th) {
+      for (let y = 56; y < 600; y += 16) {
+        for (let x = (y / 16) % 2 ? -16 : 0; x < 800; x += 32) {
+          const r = rnd();
+          c.fillStyle = r > 0.86 ? 'rgba(120,130,220,.13)' : r < 0.1 ? 'rgba(0,0,0,.22)' : 'rgba(0,0,0,.08)';
+          c.fillRect(x + 1, y + 1, 30, 14);
+        }
+      }
+      c.fillStyle = 'rgba(9,8,28,.5)';
+      m.tc.forEach(([x]) => {
+        c.fillRect(x - 22, 56, 44, 544);
+        c.fillRect(x - 30, 56, 60, 14);
+      });
+    } else if (m.th == 1) {
+      each(80, (a, b, d) => {
+        c.fillStyle = d > 0.55 ? 'rgba(150,210,255,.06)' : 'rgba(0,0,0,.13)';
+        c.fillRect(((a * 50) | 0) * 16, 56 + ((b * 34) | 0) * 16, 32 + ((d * 5) | 0) * 16, 16 + ((a * 3) | 0) * 16);
+      });
+      c.fillStyle = 'rgba(5,12,36,.5)';
+      each(13, (a, b) => tri(a * 800, 600, 28 + b * 56, -90 - b * 230));
+    } else {
+      glow(400, 190, 240, 0.55);
+      c.fillStyle = 'rgba(16,5,12,.8)';
+      for (let y = 192; y < 600; y += 8) {
+        const w = 56 + (((y - 192) * 0.7) & ~7);
+        c.fillRect(400 - w, y, w * 2, 8);
+      }
+      [-1, 0, 1].forEach((n) => {
+        let x = 400 + n * 26;
+        for (let y = 192; y < 600; y += 8) {
+          const w = 44 + (y - 192) * 0.7;
+          x = Phaser.Math.Clamp(x + (((rnd() * 3) | 0) - 1) * 8 + n * 3, 400 - w, 394 + w);
+          c.fillStyle = 'rgba(255,' + (150 - ((y / 5) | 0)) + ',40,.75)';
+          c.fillRect(x, y, 6, 8);
+        }
+      });
+      each(16, (a, b, d) => {
+        c.fillStyle = 'rgba(22,8,14,.45)';
+        c.fillRect(a * 800 - 70, 60 + ((b * 9) | 0) * 12, 110 + d * 110, 12);
+      });
+      const lava = c.createLinearGradient(0, 430, 0, 600);
+      lava.addColorStop(0, 'rgba(255,90,30,0)');
+      lava.addColorStop(1, 'rgba(255,90,30,.4)');
+      c.fillStyle = lava;
+      c.fillRect(0, 430, 800, 170);
     }
 
-    c.fillStyle = 'rgba(9,8,28,.5)';
-    TORCH.forEach(([x]) => {
-      c.fillRect(x - 22, 56, 44, 544);
-      c.fillRect(x - 30, 56, 60, 14);
+    m.tc.forEach(([x, y]) => glow(x, y, 150, 0.3));
+    // A hole in the ground glows from below.
+    [...m.L[16]].forEach((ch, i) => {
+      if (ch == '#') return;
+      const pit = c.createLinearGradient(0, 520, 0, 600);
+      pit.addColorStop(0, 'rgba(' + th.gl + ',0)');
+      pit.addColorStop(1, 'rgba(' + th.gl + ',.95)');
+      c.fillStyle = pit;
+      c.fillRect(i * 32, 520, 32, 80);
     });
 
-    TORCH.forEach(([x, y]) => {
-      const glow = c.createRadialGradient(x, y, 4, x, y, 150);
-      glow.addColorStop(0, 'rgba(255,170,60,.3)');
-      glow.addColorStop(1, 'rgba(255,170,60,0)');
-      c.fillStyle = glow;
-      c.fillRect(x - 150, y - 150, 300, 300);
-    });
-
-    for (let i = 0; i < 26; i++) {
-      const x = ((rnd() * 50) | 0) * 16;
-      const n = 2 + ((rnd() * 7) | 0);
-      for (let j = 0; j < n; j++) {
-        c.fillStyle = j % 2 ? PAL.M : '#2c7a45';
-        c.fillRect(x + (j % 3 === 2 ? 2 : 0), 56 + j * 8, 4, 8);
-      }
-      c.fillStyle = PAL.m;
-      c.fillRect(x - 2, 56 + n * 8 - 4, 4, 4);
+    if (!m.th) {
+      each(26, (a, b) => {
+        const x = ((a * 50) | 0) * 16;
+        const n = 2 + ((b * 7) | 0);
+        for (let j = 0; j < n; j++) {
+          c.fillStyle = j % 2 ? PAL.M : '#2c7a45';
+          c.fillRect(x + (j % 3 === 2 ? 2 : 0), 56 + j * 8, 4, 8);
+        }
+        c.fillStyle = PAL.m;
+        c.fillRect(x - 2, 56 + n * 8 - 4, 4, 4);
+      });
+    } else if (m.th == 1) {
+      each(44, (a, b) => {
+        c.fillStyle = b > 0.5 ? '#d9f2ff' : '#7fbfe8';
+        tri(a * 800, 56, 4 + b * 4, 12 + b * 44);
+      });
     }
 
     c.fillStyle = '#0e0b22';
@@ -1206,12 +1327,23 @@
     c.fillStyle = PAL.o;
     c.fillRect(0, 54, 800, 2);
     t.refresh();
-    scene.add.image(0, 0, 'bg').setOrigin(0).setDepth(0);
+  }
 
-    TORCH.forEach(([x, y]) => {
-      scene.add.rectangle(x, y + 12, 6, 22, 0x6e3b1c).setDepth(0);
-      const f = scene.add.rectangle(x, y - 6, 10, 14, 0xffb13d).setDepth(0);
-      const f2 = scene.add.rectangle(x, y - 3, 4, 8, 0xfff2a8).setDepth(0);
+  // Call once per map load: swaps the backdrop and rebuilds its lights and ambient particles.
+  function bg(scene, m) {
+    const th = TH[m.th];
+    const key = 'bg' + m.th;
+    if (!scene.textures.exists(key)) paint(scene, key, m, th);
+    if (BGI) BGI.setTexture(key);
+    else BGI = scene.add.image(0, 0, key).setOrigin(0).setDepth(0);
+    LT.splice(0).forEach((o) => {
+      scene.tweens.killTweensOf(o);
+      o.destroy();
+    });
+    m.tc.forEach(([x, y]) => {
+      const f = scene.add.rectangle(x, y - 6, 10, 14, th.fl[0]).setDepth(0);
+      const f2 = scene.add.rectangle(x, y - 3, 4, 8, th.fl[1]).setDepth(0);
+      LT.push(scene.add.rectangle(x, y + 12, 6, 22, 0x6e3b1c).setDepth(0), f, f2);
       scene.tweens.add({
         targets: [f, f2],
         scaleY: 1.5,
@@ -1223,6 +1355,23 @@
         ease: 'Sine.easeInOut',
       });
     });
+    const [y0, y1, v0, v1, life, freq, tint] = th.am;
+    LT.push(
+      scene.add
+        .particles(0, 0, 'px', {
+          x: { min: 0, max: 800 },
+          y: { min: y0, max: y1 },
+          speedY: { min: v0, max: v1 },
+          speedX: { min: -14, max: 14 },
+          lifespan: life,
+          frequency: freq,
+          tint,
+          alpha: { start: 0.75, end: 0 },
+          scale: { min: 0.4, max: 0.9 },
+          advance: life / 2,
+        })
+        .setDepth(0),
+    );
   }
 
   // [wave, f0, f1, ms, vol, delay ms]. Wave 4 is filtered noise and f0 its cutoff.
@@ -1269,7 +1418,17 @@
       [0, 784, 784, 520, 9, 980],
     ],
     type: [[0, 880, 880, 40, 6]],
-    streak: [[0, 392, 392, 90, 9], [0, 523, 523, 90, 9, 90], [0, 659, 659, 90, 9, 180], [0, 784, 1047, 340, 9, 270]],
+    // Each streak level plays a major third above the last one.
+    streak: (p) => [[392, 392, 90, 0], [523, 523, 90, 90], [659, 659, 90, 180], [784, 1047, 340, 270]].map(([a, b, ms, at]) => [0, a * 1.26 ** (p.sk - 2), b * 1.26 ** (p.sk - 2), ms, 9, at]),
+    look: [[3, 1319, 1319, 90, 9], [3, 1976, 1976, 220, 9, 90]],
+    fast: [[1, 200, 900, 150, 7], [1, 320, 1500, 220, 7, 110]],
+    luck: [[2, 784, 784, 70, 11], [2, 988, 988, 70, 11, 70], [2, 1175, 1175, 70, 11, 140], [2, 1568, 1568, 260, 11, 210]],
+    cut: [[4, 6000, 0, 45, 10], [4, 6000, 0, 45, 10, 110], [0, 1200, 500, 120, 6, 110]],
+    dizzy: [[3, 700, 350, 150, 9], [3, 350, 700, 150, 9, 150], [3, 700, 350, 190, 9, 300]],
+    trade: [[0, 300, 1200, 120, 7], [0, 1200, 300, 150, 7, 120]],
+    quake: [[4, 220, 0, 650, 14], [1, 90, 40, 550, 11]],
+    pit: [[2, 900, 150, 260, 9], [2, 300, 620, 110, 9, 260]],
+    map: [[2, 523, 523, 90, 9], [2, 784, 784, 240, 9, 90]],
   };
 
   function tone(w, f0, f1, ms, vol, at, out) {
@@ -1338,10 +1497,11 @@
     land: (s, x, y, a) => (squash(s, a, 1.25, 0.78), burst(x, y, 5, 0x8a93b8)),
     wrong: (s, x, y, a) => (nudge(s, a, 4, 0), burst(x, y + 14, 8, 0xff5a4d)),
     open: (s, x, y, a) => (nudge(s, a, 0, -7), burst(x, y - 8, 18, 0xffd23f)),
-    win: (s, x, y, a) => (pop(s, x, y - 30, '+' + a, 3, 0xffd23f), burst(x, y - 8, 12, 0xffd23f)),
+    win: (s, x, y, a) => (pop(s, x, y - 30, '+' + a, 3, 0xffd23f), CN.explode(Math.min(a / 100, 12), x, y - 8)),
     jack: (s, x, y, a) => (
       pop(s, x, y - 34, '¡PREMIO! +' + a, 4, 0xffd23f, 1400),
-      burst(x, y - 8, 40, 0xffd23f),
+      burst(x, y - 8, 30, 0xffd23f),
+      CN.explode(26, x, y - 8),
       s.cameras.main.shake(260, 0.008),
       s.cameras.main.flash(180, 255, 220, 90)
     ),
@@ -1349,37 +1509,74 @@
     poof: (s, x, y) => burst(x, y, 14, 0xb9bccb),
     spawn: (s, x, y) => burst(x, y, 8, 0xb9a4ff),
     box: (s, x, y) => burst(x, y, 14, 0x7b4dff),
-    slow: (s, x, y, a) => (banner(s, '¡TORTUGA!', a), s.cameras.main.flash(160, 80, 220, 120)),
-    grab: (s, x, y, a) => banner(s, '¡IMÁN!', a),
-    mix: (s, x, y, a) => (banner(s, '¡REVOLTIJO!', a), s.cameras.main.shake(420, 0.012)),
-    master: (s, x, y, a) => (banner(s, '¡LLAVE MAESTRA!', a), burst(x, y - 30, 20, 0xffd23f)),
+    slow: (s) => s.cameras.main.flash(160, 80, 220, 120),
+    mix: (s) => s.cameras.main.shake(420, 0.012),
+    master: (s, x, y) => burst(x, y - 30, 20, 0xffd23f),
+    look: (s, x, y) => burst(x, y - 30, 14, 0x8fe3ff),
+    fast: (s, x, y) => burst(x, y - 20, 14, 0xff5a4d),
+    luck: (s, x, y) => burst(x, y - 20, 14, 0x5fe37a),
+    cut: (s, x, y) => (pop(s, x, y - 50, 'SIN RACHA', 2, 0xffffff), burst(x, y - 20, 10, 0xffffff)),
+    dizzy: (s, x, y) => burst(x, y - 40, 14, 0xc77dff),
+    trade: (s, x, y) => (burst(x, y - 20, 16, 0xffffff), s.cameras.main.flash(120, 255, 255, 255)),
+    quake: (s) => s.cameras.main.shake(520, 0.016),
+    pit: (s, x, y, a) => (squash(s, a, 0.7, 1.3), burst(x, y, 10, 0xffffff)),
+    map: (s, x, y, a) => pop(s, x, 190, MAPS[a].n, 5, 0xffd23f, 1700),
+    step: (s, x, y) => burst(x, y, 1, 0x8a93b8),
     fizz: (s, x, y) => (pop(s, x, y - 40, 'NADA...', 2, 0xb9bccb), burst(x, y - 20, 6, 0xb9bccb)),
     stomp: (s, x, y) => (burst(x, y - 34, 12, 0xffffff), s.cameras.main.shake(120, 0.006)),
     streak: (s, x, y, a) => banner(s, '¡RACHA X' + a.sk + '!', a.i),
-    end: (s) => s.cameras.main.flash(300, 255, 255, 255),
+    // The winner hops under a crown for as long as the results stay up. A tie shows both players and no crown.
+    end: (s, x, y, a) => {
+      s.cameras.main.flash(300, 255, 255, 255);
+      (a < 0 ? [0, 1] : [a]).forEach((i, n) => {
+        const o = [s.add.image(a < 0 ? 320 + n * 160 : 400, 510, 'p' + i, 3).setOrigin(0.5, 1).setScale(3).setDepth(11).setFlipX(!!n)];
+        if (a >= 0) o.push(s.add.image(400, 384, 'crown').setScale(3).setDepth(11));
+        s.tweens.add({ targets: o, y: '-=34', duration: 270, yoyo: true, repeat: 4, ease: 'Quad.easeOut', onComplete: () => o.forEach((e) => e.destroy()) });
+      });
+    },
     fanfare: (s, x, y, a) => {
-      for (let i = 0; i < 8; i++) burst(60 + i * 97, 90 + (i % 3) * 30, 14, a < 0 ? PC[i % 2] : PC[a]);
+      for (let i = 0; i < 8; i++) {
+        burst(60 + i * 97, 90 + (i % 3) * 30, 14, a < 0 ? PC[i % 2] : PC[a]);
+        CN.explode(3, 60 + i * 97, 120);
+      }
     },
   };
 
   function ev(scene, name, x, y, a) {
-    if (AC && SFX[name]) {
+    const rows = SFX[name];
+    if (AC && rows) {
       if (AC.state === 'suspended') AC.resume();
-      SFX[name].forEach((r) => tone(r[0], r[1], r[2], r[3], r[4], AC.currentTime + (r[5] || 0) / 1000, SG));
+      (rows.call ? rows(a) : rows).forEach((r) => tone(r[0], r[1], r[2], r[3], r[4], AC.currentTime + (r[5] || 0) / 1000, SG));
     }
+    // Every powerup announces itself with its name from the table, in the colour of who used it.
+    const w = PW.find((w) => w.id == name);
+    if (w) banner(scene, '¡' + w.n + '!', a);
     if (FX[name]) FX[name](scene, x, y, a);
   }
 
-  // One char per eighth note: base-36 digit minus 6 semitones, '.' is a rest. Chords Am Am Dm Dm E E Am E.
-  const LEAD = '69d969d.' + 'gd9di...' + 'beiebei.' + 'iebed...' + 'dhkhdhk.' + 'nkhkl.k.' + 'i.d.9.6.' + '8.5.1...';
-  const BASS = '6.d.6.dd' + '6.d.6.dd' + 'b.i.b.ii' + 'b.i.b.ii' + 'd.k.d.kh' + 'd.k.d.kh' + '6.d.6.dd' + 'd.k.d.h.';
-  const TEMPO = { title: 0.24, play: 0.19, rush: 0.145 };
+  // One char per eighth note: base-36 digit minus 6 semitones, '.' is a rest. Each song is [lead, bass].
+  // Title: Am F C G Am F E E. Play: Am Am Dm Dm E E Am E, then F G Am Am F G E E.
+  const SONG = {
+    title: [
+      '69did9d.' + '269e969.' + '9dglgd9.' + '48bgb8b.' + 'idi.d96.' + 'e9e.962.' + '158d85d.' + 'dhd.851.',
+      '6...6.d.' + '2...2.9.' + '9...9.g.' + '4...4.b.' + '6...6.d.' + '2...2.9.' + '1...1.8.' + '1.1.1.8.',
+    ],
+    play: [
+      '69d969d.' + 'gd9di...' + 'beiebei.' + 'iebed...' + 'dhkhdhk.' + 'nkhkl.k.' + 'i.d.9.6.' + '8.5.1...' +
+        '69e9i.e.' + '8bgbk.g.' + '9didl.i.' + 'idi.d.9.' + 'e.i.l.i.' + 'g.k.n.k.' + 'p.n.k.h.' + 'd.hkd.8.',
+      '6.d.6.dd' + '6.d.6.dd' + 'b.i.b.ii' + 'b.i.b.ii' + 'd.k.d.kh' + 'd.k.d.kh' + '6.d.6.dd' + 'd.k.d.h.' +
+        '2.9.2.99' + '4.b.4.bb' + '6.d.6.dd' + '6.d.6.dd' + '2.9.2.99' + '4.b.4.bb' + '1.8.1.88' + '1.8.1.5.',
+    ],
+  };
+  const TEMPO = { title: 0.26, play: 0.19, rush: 0.145 };
+  // Each map plays the match song in its own key.
+  const KEYS = [0, 3, -2];
 
   function music(scene, mode) {
     if (mode === mMode) return;
+    if (mode !== 'rush') mStep = 0;
     mMode = mode;
     if (!AC || mTimer) return;
-    mStep = 0;
     mNext = 0;
     mTimer = scene.time.addEvent({
       delay: 60,
@@ -1390,16 +1587,23 @@
           mNext = 0;
           return;
         }
+        const calm = mMode === 'title';
+        const [lead, bass] = SONG[calm ? mMode : 'play'];
+        const key = calm ? 0 : KEYS[scene.G.lm];
         if (mNext < AC.currentTime) mNext = AC.currentTime + 0.05;
         while (mNext < AC.currentTime + 0.2) {
-          const i = mStep++ % 64;
-          const note = (ch, base, w, vol, len) =>
-            ch !== '.' && tone(w, base * 2 ** ((parseInt(ch, 36) - 6) / 12), base * 2 ** ((parseInt(ch, 36) - 6) / 12), d * len * 1000, vol, mNext, MG);
-          note(LEAD[i], 440, 0, 9, 0.9);
-          note(BASS[i], 110, 2, 30, 1.6);
-          if (mMode !== 'title') {
+          const i = mStep++ % lead.length;
+          const note = (ch, base, w, vol, len) => {
+            const f = base * 2 ** ((parseInt(ch, 36) - 6 + key) / 12);
+            if (ch !== '.') tone(w, f, f, d * len * 1000, vol, mNext, MG);
+          };
+          note(lead[i], 440, calm ? 2 : 0, calm ? 22 : 9, calm ? 1.6 : 0.9);
+          note(bass[i], 110, 2, 30, calm ? 3 : 1.6);
+          if (!calm) {
             if (i % 2) tone(4, 7000, 0, 40, 9, mNext, MG);
             if (i % 4 === 0) tone(3, 130, 45, 110, 45, mNext, MG);
+            if (i % 8 === 4) tone(4, 2200, 0, 90, 16, mNext, MG);
+            if (mMode === 'rush') note(lead[i], 880, 0, 4, 0.5);
           }
           mNext += d;
         }
