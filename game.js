@@ -122,7 +122,7 @@
 
   const G = { ph: '', t: 0, mi: 0, lm: -1, P: [], K: [], C: [], B: [], hs: [], win: -1 };
   const held = {}, pressed = {};
-  const UI = {}, U = {}, hud = { sc: [], sk: [], ki: [], pi: [], pn: [], ch: [] };
+  const UI = {}, U = {}, hud = { sc: [], sk: [], ki: [], pi: [], pn: [], ch: [], st: [] };
   const nm = { l: [], i: 0 };
   let S, gfx, kg, sg, pg, cur = 0;
 
@@ -346,7 +346,7 @@
       !G.B.some((b) => dist(b.s, { x, y }) < 40) && !G.K.some((k) => k.live && dist(k.s, { x, y }) < 40));
     if (!free.length) return false;
     const [x, y] = free[(Math.random() * free.length) | 0];
-    G.B.push({ s: S.add.image(x, y, 'box', 0).setDepth(3) });
+    G.B.push({ s: S.add.image(x, y, 'box', 0).setDepth(3), y });
     fx('spawn', x, y);
     return true;
   }
@@ -447,17 +447,18 @@
         gfx.fillStyle(PC[c.by]).fillTriangle(x + 32, y + 32, x + 48, y + 32, x + 40, y + 42);
         gfx.fillStyle(0x1b1326, 0.92).fillRoundedRect(x, y, 80, 32, 6).lineStyle(2, PC[c.by]).strokeRoundedRect(x, y, 80, 32, 6);
       }
-      if (!c.st && c.lk > 0) {
-        const x = c.s.x, y = c.s.y - 50 + 3 * Math.sin(S.time.now / 120);
-        gfx.fillStyle(0x1b1326).fillRoundedRect(x - 10, y - 8, 20, 12, 3).fillTriangle(x - 6, y + 3, x + 6, y + 3, x, y + 11);
-        gfx.fillStyle(c.k.c).fillRect(x - 7, y - 5, 14, 6).fillTriangle(x - 4, y + 2, x + 4, y + 2, x, y + 8);
+      const lk = !c.st && c.lk > 0, ly = c.s.y - 50 + 3 * Math.sin(S.time.now / 120);
+      c.q.setVisible(lk);
+      if (lk) {
+        c.q.setPosition(c.s.x, ly).setFrame(KC.indexOf(c.k.c));
+        gfx.fillStyle(0x1b1326, 0.92).fillRoundedRect(c.s.x - 18, ly - 12, 36, 24, 5).lineStyle(2, c.k.c).strokeRoundedRect(c.s.x - 18, ly - 12, 36, 24, 5);
       }
       if (!c.st) c.m.forEach((id, n) => {
         const x = c.s.x - c.m.length * 5 + n * 10, y = c.s.y - 28;
         gfx.fillStyle(0x1b1326).fillRect(x, y, 10, 10).fillStyle(G.K[id].c).fillRect(x + 2, y + 2, 6, 6);
       });
     });
-    G.B.forEach((b) => b.s.setFrame(((S.time.now / 300) | 0) & 1));
+    G.B.forEach((b) => b.s.setFrame(((S.time.now / 300) | 0) & 1).setY(b.y + 2 * Math.sin(S.time.now / 240)));
     const sec = Math.max(0, Math.ceil(G.t / 1000));
     set(hud.tm, '' + sec);
     hud.tm.setTint(sec > 10 ? 0xffffff : 0xff5a4d);
@@ -471,6 +472,9 @@
       hud.pi[i].setVisible(!!w);
       if (w) hud.pi[i].setFrame(w.f);
       set(hud.pn[i], w ? w.n : '');
+      // One effect icon rides over the player's head, above the key when there is one.
+      const f = p.dz > 0 ? 8 : p.slow > 0 ? 0 : p.fast > 0 ? 5 : p.luck ? 6 : -1;
+      hud.st[i].setVisible(f >= 0).setFrame(Math.max(f, 0)).setPosition(p.s.x, p.s.y - (p.k ? 74 : 56));
     });
   }
 
@@ -538,17 +542,19 @@
 
   function menu() {
     U.menu.forEach((t, i) => t.setTint(i == cur ? 0xffd23f : 0x8a84b8));
-    set(U.menu[0], 'JUGAR: ' + MAPS[G.mi].n);
-    U.mc.setPosition(cur ? 266 : 236, 300 + cur * 48);
+    set(U.menu[0], cur ? 'JUGAR: ' + MAPS[G.mi].n : 'JUGAR: < ' + MAPS[G.mi].n + ' >');
+    U.mc.setPosition(356 - U.menu[cur].width / 2, 300 + cur * 48);
   }
 
   function rank() {
     U.rk.forEach((r, i) => {
-      const e = G.hs[i], c = e && e === G.last ? 0xffd23f : 0xffffff;
+      const e = G.hs[i], c = [0xffd23f, 0xcfd6e6, 0xe0935a][i] || 0xffffff;
       r[0].setText(i + 1 + '.').setTint(c);
       r[1].setText(e ? e.n : '---').setTint(c);
       r[2].setText(e ? '' + e.s : '').setTint(c);
     });
+    const li = G.hs.indexOf(G.last);
+    U.rc.setVisible(li >= 0).setY(140 + li * 46);
   }
 
   function fin() {
@@ -570,6 +576,8 @@
       in() {
         G.id = 0;
         cur = 0;
+        // Physics stays frozen from the end of a match until here, so nothing falls into a pit behind the ranking.
+        S.physics.resume();
         if (G.lm != G.mi) {
           lvl();
           reset();
@@ -660,7 +668,6 @@
         if (G.et - dt < 800 && G.et >= 800) fx('fanfare', W / 2, H / 2, G.win);
         if (G.et >= 3000) go(qual() ? 'name' : 'rank');
       },
-      out() { S.physics.resume(); },
     },
     name: {
       in() {
@@ -786,7 +793,7 @@
     for (let i = 0; i < 6; i++) {
       const b = S.physics.add.existing(S.add.zone(0, 0, 48, 32), true);
       b.body.enable = false;
-      b.o = { id: i, s: S.add.image(0, 0, 'chest', 0).setDepth(2), st: 0, k: null, m: [], by: -1, ri: 0, rt: 0, life: 0, x: 1, r: REEL, lk: 0, b, t: txt(S, 0, 0, '', 3).setOrigin(0.5, 0.5).setDepth(5) };
+      b.o = { id: i, s: S.add.image(0, 0, 'chest', 0).setDepth(2), st: 0, k: null, m: [], by: -1, ri: 0, rt: 0, life: 0, x: 1, r: REEL, lk: 0, b, t: txt(S, 0, 0, '', 3).setOrigin(0.5, 0.5).setDepth(5), q: S.add.image(0, 0, 'key', 0).setDepth(5) };
       G.C.push(b.o);
       bz.push(b);
     }
@@ -822,6 +829,7 @@
       hud.pi.push(S.add.image(x + d * 62, 41, 'ic', 0).setDepth(8));
       hud.pn.push(hudTxt(x + d * 80, 41, '', 2, PC[i], i));
       hud.sk.push(hudTxt(x + d * 150, 17, '', 2, 0xffd23f, i));
+      hud.st.push(S.add.image(0, 0, 'ic', 0).setDepth(6));
     });
   }
 
@@ -834,11 +842,10 @@
     U.mc = S.add.image(0, 0, 'key', 6).setScale(2);
     c.add(U.mc);
     U.best = L(c, 400, 474, '', 2, 0xffffff);
-    L(c, 400, 546, 'IZQ O DER EN JUGAR: CAMBIAR MAPA', 2, 0x8a84b8);
-    L(c, 400, 572, 'PALANCA: ELEGIR. BOTÓN 1: CONFIRMAR', 2, 0x8a84b8);
+    L(c, 400, 572, 'PALANCA: ELEGIR Y CAMBIAR MAPA. BOTÓN 1: CONFIRMAR', 2, 0x8a84b8);
 
-    c = mkUI('how', 0.9);
-    big(c, 50, 'CÓMO JUGAR', 5);
+    c = mkUI('how', 0.93);
+    big(c, 40, 'CÓMO JUGAR', 4);
     [
       ['p0', 0, 'PALANCA: MOVERTE. BOTÓN 1: SALTAR'],
       ['key', 0, 'TOCA UNA LLAVE PARA TOMARLA'],
@@ -848,19 +855,22 @@
       ['box', 0, 'LAS CAJAS DAN POWERUPS. BOTÓN 2 LOS USA'],
       ['p1', 5, 'PISA AL RIVAL PARA QUE SUELTE SU LLAVE'],
     ].forEach(([k, f, s], i) => {
-      c.add(S.add.image(110, 110 + i * 48, k, f));
-      L(c, 150, 110 + i * 48, s, 2, 0xffffff, 0);
+      c.add(S.add.image(96, 90 + i * 36, k, f));
+      L(c, 132, 90 + i * 36, s, 2, 0xffffff, 0);
     });
+    L(c, 400, 344, 'RACHA: ABRE COFRES SEGUIDOS Y VALEN X2 Y X3', 2, 0xffd23f);
+    L(c, 400, 378, 'POWERUPS', 2, 0x8a84b8);
     PW.forEach((w, i) => {
-      const x = 110 + (i % 2) * 330, y = 448 + ((i / 2) | 0) * 34;
+      const x = 76 + (i % 2) * 348, y = 406 + ((i / 2) | 0) * 26;
       c.add(S.add.image(x, y, 'ic', w.f));
-      L(c, x + 18, y, w.n + ': ' + w.d, 2, 0xffd23f, 0);
+      L(c, x + 18, y, w.n + ': ' + w.d, 2, 0xffffff, 0);
     });
-    L(c, 400, 526, 'RACHA: ABRE COFRES SEGUIDOS Y VALEN X2 Y X3', 2);
-    L(c, 400, 572, 'BOTÓN PARA VOLVER', 2, 0x8a84b8);
+    L(c, 400, 574, 'BOTÓN PARA VOLVER', 2, 0x8a84b8);
 
     c = mkUI('rank', 0.9);
     big(c, 60, 'RANKING', 6);
+    U.rc = S.add.image(190, 0, 'key', 6).setScale(2);
+    c.add(U.rc);
     U.rk = [...Array(8).keys()].map((i) => [L(c, 230, 140 + i * 46, '', 3, 0xffffff, 0), L(c, 330, 140 + i * 46, '', 3, 0xffffff, 0), L(c, 570, 140 + i * 46, '', 3, 0xffffff, 1)]);
     L(c, 400, 572, 'BOTÓN PARA VOLVER', 2, 0x8a84b8);
 
