@@ -133,7 +133,7 @@
   const held = {}, pressed = {};
   const UI = {}, U = {}, hud = { sc: [], sk: [], ki: [], pi: [], pn: [], ch: [], st: [], o: [[], []] };
   const nm = { l: [], i: 0 };
-  let S, gfx, kg, sg, pg, cur = 0;
+  let S, gfx, kg, sg, pg, LD, cur = 0;
 
   const sh = (a) => {
     for (let i = a.length; --i > 0;) {
@@ -973,14 +973,19 @@
 
   const valid = (e) => e && typeof e.n == 'string' && /^[A-Z]{1,3}$/.test(e.n) && Number.isInteger(e.s) && e.s >= 0;
 
+  // Anything unreadable counts as missing, so a broken v2 still falls back to v1.
   async function read(k) {
-    const st = window.platanusArcadeStorage;
-    if (st) {
-      const r = await st.get(k);
-      return r && r.found ? r.value : null;
+    try {
+      const st = window.platanusArcadeStorage;
+      if (st) {
+        const r = await st.get(k);
+        return r && r.found ? r.value : null;
+      }
+      const r = window.localStorage.getItem(k);
+      return r && JSON.parse(r);
+    } catch (e) {
+      return null;
     }
-    const r = window.localStorage.getItem(k);
-    return r && JSON.parse(r);
   }
 
   async function load() {
@@ -995,8 +1000,10 @@
     } catch (e) { /* ranking stays in memory */ }
   }
 
+  // Saving writes every list, so it waits for the load: otherwise a slow load would lose the stored ones.
   async function save() {
     try {
+      await LD;
       const st = window.platanusArcadeStorage;
       if (st) await st.set(SK, G.lb);
       else window.localStorage.setItem(SK, JSON.stringify(G.lb));
@@ -1203,7 +1210,7 @@
     build();
     lvl();
     reset();
-    load();
+    LD = load();
     go('title');
   }
 
