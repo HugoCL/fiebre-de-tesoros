@@ -10,7 +10,7 @@ Cada partida dura 99 segundos.
 
 1. **Toma una llave.** Basta con tocarla. Para cambiarla por otra, párate sobre la nueva y baja la palanca.
 2. **Pruébala en un cofre.** Si no abre, el cofre recuerda esa llave y queda marcado.
-3. **Detén el slot.** Si abre, sobre el cofre gira un slot con premios de 100 a 1000 puntos. Golpea la caja desde abajo o usa el botón 2 para detenerlo.
+3. **Detén el slot.** Si abre, sobre el cofre gira un slot con premios de 100 a 1000 puntos. Se detiene solo a los pocos segundos, o antes si golpeas la caja desde abajo. La caja solo es sólida por abajo, así que puedes atravesarla desde arriba o por los lados.
 4. **Mantén la racha.** Cada cofre seguido vale más: el segundo paga doble y desde el tercero pagan triple. El marcador avisa con `PRÓXIMO COFRE X2`.
 5. **Sabotea.** Pisa a tu rival para que suelte su llave y abre las cajas de powerups.
 
@@ -20,7 +20,7 @@ En los últimos 15 segundos la música se acelera. Los ocho mejores puntajes que
 
 ## Modo solo
 
-En el título, la fila MODO cambia entre DUELO y SOLO. En solo juegas sin rival durante los mismos 99 segundos, y al final ves tu puntaje y si entraste al ranking. No salen los powerups que solo sirven contra otro jugador: Tortuga, Imán, Tijeras, Mareo y Cambiazo.
+En el título, la fila MODO cambia entre DUELO y SOLO. En solo juegas sin rival durante los mismos 99 segundos, y al final ves tu puntaje y si entraste al ranking. No salen los powerups que no sirven sin rival: Tortuga, Imán, Tijeras, Mareo, Cambiazo, Revoltijo y Terremoto.
 
 ## Mapas
 
@@ -29,7 +29,7 @@ Los tres mapas son lugares de Chile. Rotan después de cada partida y también s
 | Mapa | Peligro | Particularidad |
 |---|---|---|
 | Rapa Nui | Los pukaos de los moái ruedan por las plataformas y caen de una a otra | El mapa inicial, con plataformas cortas en zigzag |
-| Torres del Paine | El hielo se desprende de la cornisa y cae donde avisa la grieta | Plataformas más anchas y música lenta con eco |
+| Torres del Paine | El hielo cuelga de la cornisa y de las plataformas, y cae al nivel de abajo donde avisa la marca | Plataformas más anchas y música lenta con eco |
 | Villarrica | El suelo hace erupción, te lanza por el aire y llueven bolas de fuego | Dos fosos en el suelo: quien cae reaparece arriba |
 
 Cada peligro avisa antes de llegar. En el título, la fila PELIGROS elige qué tan seguido aparecen: APAGADOS, POCOS, NORMALES o MUCHOS.
@@ -58,12 +58,14 @@ Salen de las cajas que aparecen en el mapa y se usan con el botón 2. Quien va p
 |---|---|---|
 | Moverse | Palanca (`W` `A` `S` `D`) | Palanca (flechas) |
 | Saltar y confirmar | Botón 1 (`U`) | Botón 1 (`R`) |
-| Usar powerup y detener el slot | Botón 2 (`I`) | Botón 2 (`T`) |
+| Usar powerup | Botón 2 (`I`) | Botón 2 (`T`) |
 | Start | `Enter` | `2` |
+
+En el modo solo se juega con los controles del jugador 1. Las teclas también aparecen en la segunda página de CÓMO JUGAR, a la que se pasa con la palanca.
 
 ## Cómo está hecho
 
-Todo el juego vive en `game.js` y pesa 46,8 KB minificado, de un máximo de 50. No carga imágenes ni sonidos: los personajes, los mapas, la tipografía y los iconos se dibujan por código al arrancar, y la música y los efectos se sintetizan con Web Audio. Usa Phaser 3.87.0.
+Todo el juego vive en `game.js` y pesa 47,5 KB minificado, de un máximo de 50. No carga imágenes ni sonidos: los personajes, los mapas, la tipografía y los iconos se dibujan por código al arrancar, y la música y los efectos se sintetizan con Web Audio. Usa Phaser 3.87.0.
 
 Para probarlo:
 
