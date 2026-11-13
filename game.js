@@ -1551,7 +1551,7 @@
       c.add(o);
       return o;
     };
-    const run = [add(112, 376, 'p0', 0, 3).setOrigin(0.5, 1), add(688, 376, 'p1', 0, 3).setOrigin(0.5, 1).setFlipX(true)];
+    const run = [add(112, 376, 'p0', 0, 2).setOrigin(0.5, 1), add(688, 376, 'p1', 0, 2).setOrigin(0.5, 1).setFlipX(true)];
     add(400, 528, 'chest', 1, 2);
     let n = 0;
     scene.time.addEvent({
