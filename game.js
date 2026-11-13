@@ -842,8 +842,14 @@
       },
     },
     how: {
-      in() { G.id = 0; },
-      up(dt) { G.id += dt; if ((G.id > 400 && ok()) || G.id > 20000) { fx('ok'); go('title'); } },
+      in() { G.id = 0; U.h2.visible = 0; },
+      up(dt) {
+        const n = nav();
+        G.id += dt;
+        // Any direction flips the page and restarts the 20 s idle with the button live.
+        if (n.x || n.y) { U.h2.visible = !U.h2.visible; G.id = 401; fx('move'); }
+        if ((G.id > 400 && ok()) || G.id > 20000) { fx('ok'); go('title'); }
+      },
     },
     rank: {
       in() { G.id = 0; G.rl = G.so * 4 + G.df; rank(); },
@@ -1151,7 +1157,7 @@
       ['key', 0, 'TOCA UNA LLAVE PARA TOMARLA'],
       ['key', 6, 'PARA CAMBIARLA: PALANCA ABAJO SOBRE OTRA LLAVE'],
       ['chest', 0, 'TOCA UN COFRE CON LA LLAVE PARA PROBARLA'],
-      ['chest', 1, 'SI ABRE, GOLPEA LA CAJA DESDE ABAJO O USA BOTÓN 2'],
+      ['chest', 1, 'SI ABRE, GOLPEA LA CAJA DESDE ABAJO O ESPERA QUE PARE'],
       ['box', 0, 'LAS CAJAS DAN POWERUPS. BOTÓN 2 LOS USA'],
       ['p1', 5, 'PISA AL RIVAL PARA QUE SUELTE SU LLAVE'],
       ['hz', 2, 'PELIGROS DEL MAPA: TE ATURDEN Y SUELTAS LA LLAVE'],
@@ -1169,7 +1175,19 @@
       c.add(S.add.image(x, y, 'ic', w.f));
       L(c, x + 18, y, w.n + ': ' + w.d, 2, 0xffffff, 0);
     });
-    L(c, 400, 578, 'BOTÓN PARA VOLVER', 2, 0x8a84b8);
+    L(c, 400, 578, 'PALANCA: PÁGINA. BOTÓN: VOLVER', 2, 0x8a84b8);
+
+    // Second page, flipped with the stick: a table of each player's keyboard keys, on a plate that hides the
+    // rules between the title and the footer. The first row heads it (solo plays with P1's keys); each key sits on
+    // a cap in its player's colour.
+    const k = S.add.container();
+    c.add((U.h2 = k));
+    k.add(S.add.rectangle(400, 307, 800, 510, 0x0e0b22));
+    'TECLADO,P1 Y SOLO,P2,PALANCA: MOVERTE,W A S D,FLECHAS,BOTÓN 1: SALTAR,U,R,BOTÓN 2: POWERUP,I,T,START: PAUSA,ENTER,2'.split(',').forEach((s, j) => {
+      const m = j % 3, h = j < 3, x = m ? 290 + m * 180 : 190, y = 160 + ((j / 3) | 0) * 70;
+      m && !h && k.add(S.add.rectangle(x, y, s.length * 12 + 24, 34).setStrokeStyle(2, PC[m - 1]));
+      L(k, x, y, s, 2 + h, PC[j - 1]);
+    });
 
     c = mkUI('rank', 0.9);
     big(c, 56, 'RANKING', 6);
