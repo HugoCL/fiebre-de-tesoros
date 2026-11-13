@@ -846,9 +846,9 @@
       up(dt) {
         const n = nav();
         G.id += dt;
-        // Any direction flips the page and restarts the 20 s idle with the button live.
+        // Any direction flips the page and restarts the 60 s idle with the button live.
         if (n.x || n.y) { U.h2.visible = !U.h2.visible; G.id = 401; fx('move'); }
-        if ((G.id > 400 && ok()) || G.id > 20000) { fx('ok'); go('title'); }
+        if ((G.id > 400 && ok()) || G.id > 60000) { fx('ok'); go('title'); }
       },
     },
     rank: {
