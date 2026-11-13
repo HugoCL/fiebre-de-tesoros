@@ -37,7 +37,7 @@
       tc: [[176, 257], [624, 257]],
     },
     {
-      n: 'TORRES DEL PAINE', th: 1, hz: { n: 'HIELO', d: 'SE DESPRENDE Y CAE. ¡CUIDADO!' },
+      n: 'TORRES DEL PAINE', th: 1, hz: { n: 'HIELO', d: 'CAE DEL TECHO Y LAS PLATAFORMAS' },
       L: [
         '.........................',
         '.........................',
@@ -558,7 +558,7 @@
 
   // ---- hazards ----------------------------------------------------------
   // Plain data driven from tick(), so pause, end and the title freeze them. Each one warns (w ms) and then acts.
-  // roll: x, y, d, vx, vy, a (spin), sy (surface it rolls on, 0 in the air). ice: x, y, vy, fy (landing height).
+  // roll: x, y, d, vx, vy, a (spin), sy (surface it rolls on, 0 in the air). ice hangs under the nearest platform or cornice; fy is its target floor.
   // erupt: x, y (surface), x0, x1. fire: x, y, vx, vy.
 
   const solid = (ch) => ch == '#' || ch == '=';
@@ -603,9 +603,11 @@
       if (onSurf(h.x, y)) h.sy = y;
     } else if (k == 'ice') {
       h.x = Phaser.Math.Clamp(x, 16, W - 16);
+      const c = colOf(h.x), L = MAPS[G.lm].L;
       h.y = HB + 14;
+      for (let r = 0; r < L.length && rowY(r) < y; r++) if (solid(L[r][c])) h.y = rowY(r) + (L[r][c] == '=' ? 12 : T) + 14;
       h.vy = 0;
-      h.fy = floorAt((h.x / T) | 0, 0);
+      h.fy = floorAt(c, y);
     } else if (k == 'erupt') {
       const [c, sy] = spot(x, y);
       Object.assign(h, { x: c * T + T / 2, y: sy, x0: (c - 1) * T, x1: (c + 2) * T });
@@ -733,7 +735,7 @@
       } else if (h.k == 'ice') {
         const fy = Math.min(h.fy, H);
         s.setVisible(true).setPosition(h.x + Math.sin(now / 16) * (1 + 3 * k), h.y);
-        gfx.lineStyle(2, 0xffffff).beginPath().moveTo(h.x - 26, HB + 2).lineTo(h.x - 14, HB + 8).lineTo(h.x - 4, HB + 3).lineTo(h.x + 8, HB + 9).lineTo(h.x + 24, HB + 2).strokePath();
+        gfx.lineStyle(2, 0xffffff).beginPath().moveTo(h.x - 26, h.y - 12).lineTo(h.x - 14, h.y - 6).lineTo(h.x - 4, h.y - 11).lineTo(h.x + 8, h.y - 5).lineTo(h.x + 24, h.y - 12).strokePath();
         arrows(h.x, h.y - 6, 0, 1);
         gfx.fillStyle(0x1b1326).fillRect(h.x - 18, fy - 6, 36, 8).fillStyle(on ? 0xffd23f : 0xff5a4d).fillRect(h.x - 16, fy - 4, 32, 4);
       } else {
@@ -1674,7 +1676,7 @@
       }
       R('#0d1736', 0, 528, 800, 72);
       each(40, (a, b) => R('#1a2850', a * 800, 532 + b * 60, 12, 4));
-      // The ice that breaks off hangs from this cornice.
+      // Ice hangs from this cornice and the undersides of platforms.
       R('#6f9fd0', 0, 56, 800, 6);
       each(44, (a, b) => tri(b > 0.5 ? '#7fb0dc' : '#4f7fb8', a * 800, 60, 4 + b * 4, 12 + b * 36));
     } else {
