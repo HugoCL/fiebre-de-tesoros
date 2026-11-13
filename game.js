@@ -341,8 +341,6 @@
   }
 
   function act(p) {
-    const c = G.C.filter((c) => c.st == 1 && c.by == p.i).sort((a, b) => a.life - b.life)[0];
-    if (c) return settle(c);
     const w = PW.find((w) => w.id == p.pw);
     if (!w) return;
     p.pw = null;
@@ -1073,6 +1071,7 @@
     for (let i = 0; i < 6; i++) {
       const b = S.physics.add.existing(S.add.zone(0, 0, 48, 32), true);
       b.body.enable = false;
+      b.body.checkCollision.up = b.body.checkCollision.left = b.body.checkCollision.right = false;
       b.o = { id: i, s: S.add.image(0, 0, 'chest', 0).setDepth(2), st: 0, k: null, m: [], by: -1, ri: 0, rt: 0, life: 0, x: 1, r: REEL, lk: 0, b, t: txt(S, 0, 0, '', 3).setOrigin(0.5, 0.5).setDepth(5), q: S.add.image(0, 0, 'key', 0).setDepth(5) };
       G.C.push(b.o);
       bz.push(b);
