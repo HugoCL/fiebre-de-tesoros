@@ -1290,8 +1290,8 @@
   const P_BELT = ['..oohhhghhhoo...', '..oohhhghhhoso..', '...ohhhghhhho...', '..osohhghhhos...'];
   const P_LEG = [
     '...obbbobbbo....' + '...obbo.obbo....' + '..oHHHo.oHHHo...' + '..ooooo.ooooo...',
-    '...obbbobbbo....' + '..obbo...obbo...' + '.oHHHo...oHHHo..' + '.ooooo...ooooo..',
-    '....obbbbbo.....' + '....obbobbo.....' + '...oHHHoHHHo....' + '...oooooooo.....',
+    '...obbbobbbo....' + '..obbo...obbo...' + '.oHHo....oHHHo..' + '.ooo.....ooooo..',
+    '...obbbobbbo....' + '..oHHbo.obbo....' + '...ooo..oHHHo...' + '........ooooo...',
     '...obbbobbbo....' + '..obbo..obbo....' + '..oHHo..oHHHo...' + '..ooo...ooooo...',
     '...obbbobbbo....' + '...obbo..obbo...' + '...oHHHo.oHHHo..' + '...oooo..oooo...',
     '...obbbobbbo....' + '....obbobbo.....' + '...oHHHo.oHHo...' + '...ooooo.ooo....',
@@ -1525,14 +1525,15 @@
     return tint === undefined ? t : t.setTint(tint);
   }
 
-  // Title dressing: both players running in place and a chest that spits coins.
+  // Title dressing: a chest that spits coins, and the two players standing on the side ledges (one per map,
+  // at these x) facing it. Each coin makes one of them hop and cheer, taking turns (in solo P2's turns pass unseen).
   function deco(scene, c) {
     const add = (x, y, k, f, z) => {
       const o = scene.add.image(x, y, k, f).setScale(z);
       c.add(o);
       return o;
     };
-    const run = [add(96, 400, 'p0', 1, 3).setOrigin(0.5, 1), add(704, 400, 'p1', 1, 3).setOrigin(0.5, 1).setFlipX(true)];
+    const run = [add(112, 376, 'p0', 0, 3).setOrigin(0.5, 1), add(688, 376, 'p1', 0, 3).setOrigin(0.5, 1).setFlipX(true)];
     add(400, 528, 'chest', 1, 2);
     let n = 0;
     scene.time.addEvent({
@@ -1541,8 +1542,11 @@
       callback: () => {
         if (!c.visible) return;
         n++;
-        run.forEach((o, i) => o.setFrame(1 + (n & 1)).setVisible(!i || !scene.G.so));
-        if (n % 6 == 0) CN.explode(1, 400, 516);
+        run.forEach((o, i) => o.setVisible(!i || !scene.G.so));
+        if (n % 6) return;
+        CN.explode(1, 400, 516);
+        const o = run[(n / 6) & 1].setFrame(6);
+        scene.tweens.add({ targets: o, y: 352, duration: 190, yoyo: 1, ease: 'Quad', onComplete: () => o.setFrame(0) });
       },
     });
   }
