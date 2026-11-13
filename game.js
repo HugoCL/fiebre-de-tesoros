@@ -268,7 +268,7 @@
       },
     },
     {
-      id: 'mix', n: 'REVOLTIJO', d: 'MEZCLA COFRES', f: 2, w: 8, wl: 4,
+      id: 'mix', r: 1, n: 'REVOLTIJO', d: 'MEZCLA COFRES', f: 2, w: 8, wl: 4,
       use(p) {
         const cs = G.C.filter((c) => !c.st), ks = sh(cs.map((c) => c.k));
         cs.forEach((c, i) => { c.k = ks[i]; c.m = []; });
@@ -316,7 +316,7 @@
       },
     },
     {
-      id: 'quake', n: 'TERREMOTO', d: 'SACUDE TODO', f: 10, w: 6, wl: 2,
+      id: 'quake', r: 1, n: 'TERREMOTO', d: 'SACUDE TODO', f: 10, w: 6, wl: 2,
       use(p, r) {
         G.K.forEach((k) => {
           if (!k.live || k.own) return;
@@ -332,7 +332,7 @@
   const here = (p) => !G.so || !p.i;
   const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
-  // Solo has no rival, so the powerups that only act on one are left out and nobody trails.
+  // Solo leaves out powerups with no benefit without a rival, and nobody trails.
   function roll(p) {
     const lose = !G.so && G.P[1 - p.i].sc - p.sc >= 300, w = (r) => (lose ? r.wl : r.w), pool = PW.filter((r) => !(G.so && r.r));
     let x = Math.random() * pool.reduce((a, r) => a + w(r), 0);
